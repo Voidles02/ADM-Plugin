@@ -1,0 +1,74 @@
+titles:
+  home: '<dark_aqua>ADM Control Panel</dark_aqua>'
+  players: '<dark_aqua>Select Player</dark_aqua>'
+  confirm: '<red>Confirm Action</red>'
+  input: '<dark_aqua>Action Options</dark_aqua>'
+  settings: '<dark_aqua>HUD Preferences</dark_aqua>'
+  moderation: '<dark_aqua>Moderation</dark_aqua>'
+  punishments: '<dark_aqua>Punishments</dark_aqua>'
+  reports: '<dark_aqua>Reports</dark_aqua>'
+  logs: '<dark_aqua>Logs and Audit</dark_aqua>'
+  integrations: '<dark_aqua>Integrations</dark_aqua>'
+  status: '<dark_aqua>System Status</dark_aqua>'
+layout:
+  content-slots: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44]
+slots:
+  back: 45
+  home: 46
+  previous: 48
+  page: 49
+  next: 50
+  refresh: 51
+  test: 52
+  close: 53
+filler:
+  enabled: true
+  material: BLACK_STAINED_GLASS_PANE
+border:
+  enabled: true
+  material: GRAY_STAINED_GLASS_PANE
+sounds:
+  enabled: true
+  click: UI_BUTTON_CLICK
+no-permission:
+  name: '<red>No permission</red>'
+  material: GRAY_DYE
+unavailable:
+  material: BARRIER
+input-timeout-seconds: 60
+status:
+  ttl-seconds: 5
+  slow-storage-ms: 100
+  live-refresh-seconds: 0
+default-reason: 'No reason specified'
+presets:
+  durations: [5m, 1h, 1d, 7d, 30d, permanent]
+  reasons: ['Rule violation', 'Spam', 'Inappropriate behaviour']
+tooltips:
+  click: '<gray>Left: activate; middle: refresh where supported</gray>'
+  permission: '<gray>Requires <node>: <state></gray>'
+  no-permission: '<red>No permission</red>'
+  unavailable: '<gray>Module unavailable</gray>'
+  destructive: '<red>Destructive action — confirmation required</red>'
+buttons:
+  confirm:
+    name: '<green>Confirm</green>'
+    material: LIME_CONCRETE
+    custom-model-data: 0
+  cancel:
+    name: '<red>Cancel</red>'
+    material: RED_CONCRETE
+categories:
+  player: {enabled: true, slot: 10, name: 'Player Management'}
+  teleport: {enabled: true, slot: 11, name: 'Teleportation'}
+  inventory: {enabled: true, slot: 12, name: 'Inventory Tools'}
+  chat: {enabled: true, slot: 13, name: 'Chat Tools'}
+  vanish: {enabled: true, slot: 14, name: 'Vanish and Staff Mode'}
+  server: {enabled: true, slot: 15, name: 'Server Tools'}
+  settings: {enabled: true, slot: 16, name: 'Settings'}
+  moderation: {enabled: true, slot: 19, name: 'Moderation'}
+  punishments: {enabled: true, slot: 20, name: 'Punishments'}
+  reports: {enabled: true, slot: 21, name: 'Reports'}
+  logs: {enabled: true, slot: 22, name: 'Logs and Audit'}
+  integrations: {enabled: true, slot: 23, name: 'Integrations'}
+  status: {enabled: true, slot: 24, name: 'System Status'}

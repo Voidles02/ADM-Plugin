@@ -1,0 +1,104 @@
+modules:
+  core: true
+  player-tools: true
+  teleport: true
+  information: true
+  chat: true
+  inventory: true
+  vanish: true
+  punishments: true
+  staff-chat: true
+  staff-tools: true
+  reports: true
+  audit: true
+
+commands:
+  name: adm
+  aliases:
+    - advancedadminmanagement
+
+login-fallback: allow
+
+cooldowns:
+  reload: 0
+  version: 0
+  debug: 0
+  gamemode: 0
+  fly: 0
+  speed: 0
+  god: 0
+  heal: 0
+  feed: 0
+  repair: 0
+  clear: 0
+  tp: 0
+  tphere: 0
+  tpall: 0
+  tppos: 0
+  back: 0
+  top: 0
+  near: 0
+  ping: 0
+  list: 0
+  broadcast: 0
+  clearchat: 0
+  mutechat: 0
+  slowmode: 0
+  sudo: 0
+  endersee: 0
+  enderedit: 0
+  invsee: 0
+  vanish: 0
+  whois: 0
+  seen: 0
+
+slowmode:
+  min-seconds: 1
+  max-seconds: 300
+
+near:
+  default-radius: 100
+  max-radius: 1000
+
+clearchat:
+  lines: 100
+
+audit:
+  enabled: true
+  file-secondary: false
+  retention-days: 90
+  prune-on-start: true
+  max-file-bytes: 10485760
+  rotate-daily: true
+
+vanish:
+  on-join: true
+  fake-join: false
+  fake-quit: false
+
+punishments:
+  default-reason: No reason specified
+  page-size: 10
+  escalation:
+    - warnings: 3
+      action: tempmute
+      duration: 1h
+    - warnings: 5
+      action: tempban
+      duration: 1d
+
+freeze:
+  actionbar-seconds: 5
+  command-whitelist: [msg, tell, w, r, reply]
+  quit-action: notify
+
+staffchat:
+  prefix: '<dark_gray>[<aqua>Staff</aqua>]</dark_gray> '
+
+spy:
+  ignored-commands: [login, register]
+  social-commands: [msg, tell, w, reply, r]
+
+reports:
+  cooldown-seconds: 60
+  retention-days: 90

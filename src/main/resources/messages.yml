@@ -1,0 +1,153 @@
+prefix: '<dark_gray>[<aqua>ADM</aqua>]</dark_gray> '
+command:
+  help: '<prefix><gray>Commands: /<command> version, reload, debug, storage-info, log, cleanup</gray>'
+  no-permission: '<prefix><red>You do not have permission to do that.</red>'
+  module-unavailable: '<prefix><red>The <module> module is unavailable.</red>'
+  version: '<prefix><gray>ADM <aqua><version></aqua> by <aqua><author></aqua>.</gray>'
+  debug: '<prefix><gray>Module status:</gray><newline><details>'
+  module-status: '<gray><module>: <status></gray>'
+  player-only: '<prefix><red>This command needs a player; specify a target where supported.</red>'
+  player-not-found: '<prefix><red>Player <target> was not found.</red>'
+  hierarchy: '<prefix><red>You cannot target <target>: they are immune or not below your rank.</red>'
+  cooldown: '<prefix><yellow>Wait <seconds> seconds before using this command again.</yellow>'
+  usage: '<prefix><yellow>Usage: <usage></yellow>'
+reload:
+  started: '<prefix><gray>Reading settings asynchronously...</gray>'
+  busy: '<prefix><yellow>A reload is already running.</yellow>'
+  success: '<prefix><green>Settings and messages reloaded.</green>'
+  invalid: '<prefix><red>Reload rejected; the previous settings are still active. <error></red>'
+  unavailable: '<prefix><red>ADM is shutting down; reload is unavailable.</red>'
+  restart-required: '<prefix><yellow>Restart required to apply: <setting>.</yellow>'
+  module-failed: '<prefix><red>Module <module> failed during reload and was disabled. Check the server log.</red>'
+
+tools:
+  gamemode: "<prefix><green>Set <target>'s game mode to <mode>.</green>"
+  fly: '<prefix><green>Flight for <target>: <state>.</green>'
+  speed: "<prefix><green>Set <target>'s <type> speed to <speed>.</green>"
+  god: '<prefix><green>God mode for <target>: <state>.</green>'
+  heal: '<prefix><green>Healed <target>.</green>'
+  feed: '<prefix><green>Fed <target>.</green>'
+  clear: "<prefix><green>Cleared <target>'s inventory.</green>"
+  repair: '<prefix><green>Repaired <count> item(s).</green>'
+  nothing-to-repair: '<prefix><yellow>No damaged repairable items were found.</yellow>'
+  dead: '<prefix><red><target> is dead and cannot be healed yet.</red>'
+
+teleport:
+  started: '<prefix><gray>Teleport requested for <target>.</gray>'
+  success: '<prefix><green>Teleported <target>.</green>'
+  failed: '<prefix><red>Teleport failed or was cancelled.</red>'
+  busy: '<prefix><yellow>A teleport is already pending for that player.</yellow>'
+  all: '<prefix><green>Requested teleports for <count> player(s).</green>'
+  same-player: '<prefix><yellow>You are already at your own location.</yellow>'
+  world-not-found: '<prefix><red>World <world> was not found.</red>'
+  out-of-bounds: '<prefix><red>Coordinates are outside the world bounds or border.</red>'
+  no-back: '<prefix><yellow>No previous location is available in this session.</yellow>'
+  no-safe-top: '<prefix><red>No safe top location was found at this X/Z.</red>'
+
+information:
+  list: '<prefix><gray>Online (<count>): <players></gray>'
+  ping: "<prefix><gray><target>'s ping: <ping>ms.</gray>"
+  near: '<prefix><gray>Nearby within <radius>m (<count>): <players></gray>'
+  radius: '<prefix><red>Radius must be an integer from 1 to <max>.</red>'
+  seen: '<prefix><gray><target>: first played <first>; last seen <last> (UTC).</gray>'
+  whois-online: '<prefix><gray><target><newline>Ping: <ping>ms<newline>Game mode: <gamemode><newline>Location: <location><newline>Playtime: <playtime><newline>First played: <first><newline>Last seen: <last> (UTC)</gray>'
+  whois-online-ip: '<prefix><gray><target><newline>IP: <ip><newline>Ping: <ping>ms<newline>Game mode: <gamemode><newline>Location: <location><newline>Playtime: <playtime><newline>First played: <first><newline>Last seen: <last> (UTC)</gray>'
+  whois-offline: '<prefix><gray><target> (offline)<newline>First played: <first><newline>Last seen: <last> (UTC)<newline>IP: unavailable<newline>Ping: unavailable<newline>Game mode: unavailable<newline>Location: unavailable<newline>Playtime: unavailable</gray>'
+  stored: '<prefix><gray><target>: stored first login <first>; last login <last><newline>Name history: <names></gray>'
+  stored-ip: '<prefix><gray><target>: stored first login <first>; last login <last><newline>Name history: <names><newline>Last IP: <ip></gray>'
+
+chat:
+  broadcast: '<prefix><gold><message></gold>'
+  broadcast-sent: '<prefix><green>Broadcast sent.</green>'
+  clear-line: ' '
+  cleared: '<prefix><yellow>Chat was cleared by <actor>.</yellow>'
+  clear-success: '<prefix><green>Chat cleared.</green>'
+  muted: '<prefix><yellow>Chat was muted by <actor>.</yellow>'
+  unmuted: '<prefix><green>Chat was unmuted by <actor>.</green>'
+  mute-success: '<prefix><green>Global chat mute: <state>.</green>'
+  mute-denied: '<prefix><red>Chat is currently muted.</red>'
+  slow-on: '<prefix><yellow><actor> set slowmode to <seconds> seconds.</yellow>'
+  slow-off: '<prefix><green><actor> disabled slowmode.</green>'
+  slow-success: '<prefix><green>Slowmode interval: <seconds> seconds (0 = off).</green>'
+  slow-range: '<prefix><red>Slowmode must be off or an integer from <min> to <max>.</red>'
+  slow-denied: '<prefix><yellow>Slowmode allows one message every <seconds> seconds.</yellow>'
+  sudo-success: '<prefix><green>Executed as <target>.</green>'
+  sudo-failed: '<prefix><red>The target command could not be dispatched.</red>'
+  sudo-nested: '<prefix><red>Nested sudo is not allowed.</red>'
+
+inventory:
+  title: '<type>: <target>'
+  opened: '<prefix><green>Opened <target>: <mode>.</green>'
+  locked: '<prefix><red>This Ender Chest is locked by a staff editor.</red>'
+  provider-unavailable: '<prefix><red>No Ender Chest provider is available.</red>'
+  offline-ender: '<prefix><red>Offline access unavailable.</red>'
+  offline-invsee: '<prefix><red>Offline inventory access unavailable in this stage.</red>'
+  open-failed: '<prefix><red>The inventory could not be opened.</red>'
+  self-edit: '<prefix><red>Use your own inventory directly; invsee self-editing is unavailable.</red>'
+
+vanish:
+  enabled: '<prefix><green>Vanish enabled at level <level>.</green>'
+  disabled: '<prefix><green>Vanish disabled.</green>'
+  invalid-level: '<prefix><red>You must hold the permission for the requested non-negative vanish level. Your highest level is <max>.</red>'
+  fake-join: '<yellow><target> joined the game</yellow>'
+  fake-quit: '<yellow><target> left the game</yellow>'
+
+storage:
+  info: '<prefix><gray>Storage: <state><newline>Last success (epoch ms): <success><newline>Last latency: <latency>ms<newline>Last error: <error></gray>'
+  unavailable: '<prefix><red>Storage is unavailable. Check /adm storage-info and the server log.</red>'
+  working: '<prefix><gray>Request queued.</gray>'
+  login-denied: '<red>Login unavailable: administration storage is offline.</red>'
+  page: '<prefix><gray><type> for <target> — page <page>/<pages><newline><rows></gray>'
+
+punishment:
+  duration: '<prefix><red>Invalid duration. Use 30m, 2h, 7d, or 30d.</red>'
+  success: '<prefix><green><action> applied to <target>.</green>'
+  online-only: '<prefix><red>This action requires an online player.</red>'
+  disconnect: '<red><action>: <reason><newline>Expires: <expires></red>'
+  muted: '<prefix><red>You are muted: <reason></red>'
+  warned: '<prefix><yellow>You have been warned: <reason></yellow>'
+
+staff:
+  sent: '<prefix><green>Staff message sent.</green>'
+  toggle: '<prefix><green><tool>: <state>.</green>'
+  spy: '<dark_gray>[Spy]</dark_gray> <gray><staff>: <message></gray>'
+  busy: '<prefix><yellow>A staff-state operation is already pending.</yellow>'
+  restore-failed: '<red>Staff inventory recovery could not finish. Your snapshot is retained; contact an administrator.</red>'
+  inventory-locked: '<prefix><red>This inventory is protected by a staff-mode snapshot.</red>'
+  freeze-bypass: '<prefix><red>This player is exempt from freezing.</red>'
+  frozen: '<prefix><green>Frozen state for <target>: <state>.</green>'
+  freeze-title: '<red>You are frozen</red>'
+  freeze-subtitle: '<yellow>Follow staff instructions. Do not disconnect.</yellow>'
+  freeze-actionbar: '<red>You are frozen — follow staff instructions.</red>'
+  freeze-quit: '<prefix><red><target> disconnected while frozen.</red>'
+  command-blocked: '<prefix><red>This command is blocked while your movement or inventory is locked.</red>'
+
+reports:
+  submitted: '<prefix><green>Report submitted for <target>.</green>'
+  notify: '<prefix><yellow><staff> reported <target>: <reason></yellow>'
+  title: '<dark_gray>Reports <page>/<pages></dark_gray>'
+  entry: '<yellow>#<id> <target> [<status>]</yellow>'
+  reason: '<gray>Reason: <reason></gray>'
+  reporter: '<gray>Reporter: <staff></gray>'
+  claimant: '<gray>Claimed by: <claimant></gray>'
+  time: '<gray>Created: <time></gray>'
+  controls: '<gray>Left: claim | Right: close | Shift-left: teleport</gray>'
+
+audit:
+  cleaned: '<prefix><green>Pruned <count> audit rows and expired closed reports.</green>'
+  title: '<dark_gray>Audit <page>/<pages></dark_gray>'
+  entry: '<yellow>#<id> <action></yellow>'
+  participants: '<gray><staff> → <target></gray>'
+  time: '<gray><time> [<source>]</gray>'
+
+gui:
+  previous: '<yellow>Previous page</yellow>'
+  next: '<yellow>Next page</yellow>'
+
+hud:
+  opened: '<prefix><gray>HUD opened.</gray>'
+  input-prompt: '<prefix><yellow>Type your input in chat, or cancel. This input is not broadcast.</yellow>'
+  input-timeout: '<prefix><red>HUD input timed out.</red>'
+  report-missing: '<prefix><red>This report no longer exists.</red>'
+  report-result: '<prefix><gray>Report <action>: <count> row(s) changed.</gray>'
+  status-test: '<prefix><gray>Safe test for <module>: <result></gray>'

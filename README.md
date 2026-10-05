@@ -1,2 +1,433 @@
-# ADM-Plugin
-Created with kodari.ai
+# ADM — Advanced Admin Management
+
+Author: **voidles02**  
+Stage: **6 — Inventory HUD, remaining categories, and system health**
+
+## Installation
+
+Use Paper 1.21.x and Java 21. The Gradle Kotlin DSL project compiles against Paper 1.21.4; Paper and LuckPerms APIs are compile-only. Java and Kotlin code target Java 21. Kotlin stdlib is loaded through the root `manifest.kod`; Xerial SQLite JDBC 3.53.4.0 is declared as an implementation dependency with an isolated optional runtime loader. No libraries are shaded. This is not a Spigot or Folia plugin.
+
+Put the built ADM jar in `plugins/` and restart the server. LuckPerms is optional: when installed it loads before ADM. First startup creates `plugins/ADM/config.yml` and `messages.yml`. Existing files are preserved: absent settings use defaults, and absent messages fall back with a once-per-key warning. Add the new entries from the bundled configuration to customize them.
+
+## Implemented modules
+
+| Toggle | Features |
+| --- | --- |
+| `modules.core` | `/adm reload`, `/adm version`, `/adm debug` |
+| `modules.player-tools` | Game modes, flight, speed, god, heal, feed, repair, clear |
+| `modules.teleport` | Player/coordinate teleports, back, safe top |
+| `modules.information` | Near, ping, online list, whois, seen |
+| `modules.chat` | Broadcast, clear/mute chat, slowmode, sudo |
+| `modules.inventory` | Ender Chest providers, locked ender editing, invsee |
+| `modules.vanish` | Level-based visibility, silent joins/quits, pickup and mob-target protection |
+| `modules.punishments` | Persistent bans, IP bans, mutes, warnings, kicks, history, alts |
+| `modules.staff-chat` | Staff chat and command/social spy; independent of database health |
+| `modules.staff-tools` | Persistent freeze and recoverable staff-mode snapshots |
+| `modules.reports` | Report submission and staff report GUI |
+| `modules.audit` | `/adm log`, `/adm cleanup`, and startup retention pruning |
+
+The storage listener and audit sink are infrastructure independent of module toggles. `/adm storage-info` remains available through core even when SQLite fails. Storage-dependent commands reject requests while storage is starting or failed. An unavailable driver disables punishments, staff-tools, reports, and audit commands; other modules continue working. Login recording and configured failure fallback remain active.
+
+A disabled module registers neither its commands nor its feature listeners. Core identity/cache cleanup remains available independently of these toggles. All modules may be disabled. A module exception is logged, its resources are released, and it stays failed until restart. Already registered command nodes reject execution after a failure.
+
+## Commands and permissions
+
+Command nodes default to op-only. Automatic vanish-on-join and levels 0, 2, and 3 default to false; level 1 defaults to op. A base permission is always required; targeting someone else additionally requires the `.others` node when listed. Fixed-mode shortcuts share the game-mode permissions and cooldown.
+
+| Command | Base permission | Additional permission |
+| --- | --- | --- |
+| `/adm reload` | `adm.admin.reload` | — |
+| `/adm version` | `adm.admin.version` | — |
+| `/adm debug` | `adm.admin.debug` | — |
+| `/gamemode <survival\|creative\|adventure\|spectator> [player]`, `/gm` | `adm.mod.gamemode` | `adm.mod.gamemode.others` |
+| `/gmc [player]`, `/gms [player]`, `/gma [player]`, `/gmsp [player]` | `adm.mod.gamemode` | `adm.mod.gamemode.others` |
+| `/fly [player]` | `adm.mod.fly` | `adm.mod.fly.others` |
+| `/speed <0-10> [fly\|walk] [player]` | `adm.mod.speed` | `adm.mod.speed.others` |
+| `/god [player]` | `adm.admin.god` | `adm.admin.god.others` |
+| `/heal [player]` | `adm.mod.heal` | `adm.mod.heal.others` |
+| `/feed [player]` | `adm.mod.feed` | `adm.mod.feed.others` |
+| `/repair [hand\|all]` | `adm.admin.repair` | `adm.admin.repair.all` for all |
+| `/clear [player]` | `adm.admin.clear` | `adm.admin.clear.others` |
+| `/tp <player>` | `adm.mod.tp` | — |
+| `/tphere <player>` | `adm.mod.tphere` | — |
+| `/tpall` | `adm.admin.tpall` | — |
+| `/tppos <x> <y> <z> [world]` | `adm.admin.tppos` | — |
+| `/back` | `adm.mod.back` | — |
+| `/top` | `adm.mod.top` | — |
+| `/near [radius]` | `adm.mod.near` | — |
+| `/ping [player]` | `adm.mod.ping` | — |
+| `/list` | `adm.mod.list` | — |
+| `/broadcast <message>` | `adm.admin.broadcast` | — |
+| `/clearchat` | `adm.mod.clearchat` | — |
+| `/mutechat` | `adm.mod.mutechat` | — |
+| `/slowmode <seconds\|off>` | `adm.mod.slowmode` | — |
+| `/sudo <player> <message or /command>` | `adm.admin.sudo` | — |
+| `/endersee <player>` | `adm.admin.endersee` | Read-only; no aliases |
+| `/enderedit <player>` | `adm.admin.enderedit` | Exclusive edit lease; no aliases |
+| `/invsee <player>` | `adm.admin.invsee` | `adm.admin.invsee.edit` enables editing |
+| `/vanish [level]`, `/v` | `adm.admin.vanish` | `adm.vanish.level.<n>` for the chosen level |
+| See vanished players | `adm.admin.vanish.see` | Viewer must have a level at least as high as the vanished player's chosen level |
+| Silent vanish on join | `adm.admin.vanish.join` | Base vanish permission, a level, and `vanish.on-join: true` |
+| `/whois <player>` | `adm.admin.whois` | `adm.admin.whois.ip` reveals online IP |
+| `/seen <player>` | `adm.admin.seen` | — |
+| `/adm storage-info` | `adm.admin.storage-info` | Connection state, last success, latency, error |
+| `/mute <player> [reason]` | `adm.mod.mute` | Hierarchy |
+| `/tempmute <player> <duration> [reason]` | `adm.mod.tempmute` | Hierarchy |
+| `/unmute <player>` | `adm.mod.unmute` | Hierarchy |
+| `/warn <player> [reason]` | `adm.mod.warn` | Hierarchy and configurable escalation |
+| `/warnings <player> [page]` | `adm.mod.warnings` | Hierarchy |
+| `/clearwarnings <player>` | `adm.mod.clearwarnings` | Hierarchy; history retained |
+| `/kick <player> [reason]` | `adm.mod.kick` | Online only; hierarchy |
+| `/ban <player> [reason]` | `adm.admin.ban` | Hierarchy |
+| `/tempban <player> <duration> [reason]` | `adm.admin.tempban` | Hierarchy |
+| `/ipban <player\|ip> [reason]` | `adm.admin.ipban` | Hierarchy for known accounts sharing the IP |
+| `/unban <player\|ip>` | `adm.admin.unban` | Name removes UUID ban and associated IP ban; literal IP removes IP bans |
+| `/history <player> [page]` | `adm.admin.history` | Hierarchy |
+| `/alts <player> [page]` | `adm.admin.alts` | Accounts with the same last stored IP; hierarchy |
+| `/freeze <player>` | `adm.mod.freeze` | Hierarchy; `adm.bypass.freeze` exempts |
+| `/staffchat [message]`, `/sc` | `adm.mod.staffchat` | Empty message toggles routing |
+| `/staffmode`, `/sm` | `adm.mod.staffmode` | Requires the vanish module; tools check their own permissions |
+| `/spy [commands\|social]` | `adm.admin.spy.commands` / `adm.admin.spy.social` | In-memory toggles |
+| `/report <player> <reason>` | `adm.report` | Default true; submission cooldown |
+| `/reports [page]` | `adm.mod.reports` | `adm.mod.reports.claim`, `adm.mod.reports.close`, `adm.mod.tp` |
+| Report/frozen-quit notifications | `adm.mod.notify` | — |
+| `/adm log [staff] [target] [action] [page]` | `adm.admin.log` | Use `*` to skip a filter |
+| `/adm cleanup` | `adm.admin.cleanup` | Deletes old audit rows and old closed reports |
+
+`/adm` shows core help when the actor has any core permission. Its default alias is `/advancedadminmanagement`. Commands support players and the local console. Console must specify a target for player tools and ping. Repair, near, teleport, inventory views, and vanish need an in-game player context. Whois and seen support console. Suggestions include only online player names and fixed values; worlds and offline players are not suggested. Offline-capable commands accept cached names or UUIDs without a network name lookup.
+
+### Wildcards and hierarchy markers
+
+| Node | Meaning |
+| --- | --- |
+| `adm.mod.*` | All implemented moderator command nodes and `.others` variants |
+| `adm.admin.*` | Admin command nodes, IP/edit/see permissions, level 1, plus `adm.mod.*`; silent join remains opt-in |
+| `adm.*` | All implemented command permissions, bypasses, tiers, and immunity |
+| `adm.tier.mod` | Fallback hierarchy rank 1 |
+| `adm.tier.admin` | Fallback hierarchy rank 2 |
+| `adm.immune` | Cannot be targeted by protected actions |
+| `adm.bypass.hierarchy` | Skip hierarchy and immunity checks |
+| `adm.bypass.mutechat` | Chat while global mute is active |
+| `adm.bypass.slowmode` | Ignore global chat interval |
+| `adm.bypass.freeze` | Exempt from freezing and frozen-player restrictions |
+| `adm.bypass.*` | All bypass nodes |
+
+God, clear, heal, and feed on others, sudo, freeze, and every punishment command require a **strictly higher** rank and a non-immune target. Self-actions and console bypass hierarchy. Offline punishment checks use the last recorded rank/immunity, or cached LuckPerms weight when available; offline permissions are not fetched from the network. Without LuckPerms, admin marker = 2, moderator marker = 1, otherwise 0; command wildcards alone do not assign a fallback tier. With LuckPerms, rank is the **primary group's weight**, not the highest inherited weight. Missing primary-group weights are 0. Operators normally hold bypass and immunity nodes, so test hierarchy with non-op accounts.
+
+The isolated LuckPerms integration caches plain prefix, suffix, and primary-group weight metadata. Joins and `UserDataRecalculateEvent` refresh it; quits remove it. Only the integration imports LuckPerms classes. No users or groups are loaded from storage or the network by ADM. If integration initialization fails, ADM logs the problem and uses tier markers.
+
+### LuckPerms examples
+
+Run these in the server console (add `/` in-game). Weights must increase with authority; assign staff's primary groups explicitly.
+
+```text
+lp creategroup helper
+lp group helper setweight 10
+lp group helper meta setprefix 10 "[Helper] "
+lp group helper permission set adm.mod.ping true
+lp group helper permission set adm.mod.list true
+lp group helper permission set adm.mod.near true
+
+lp creategroup moderator
+lp group moderator setweight 20
+lp group moderator parent add helper
+lp group moderator permission set adm.mod.* true
+lp group moderator permission set adm.tier.mod true
+lp group moderator meta setsuffix 20 " [Staff]"
+
+lp creategroup admin
+lp group admin setweight 30
+lp group admin parent add moderator
+lp group admin permission set adm.admin.* true
+lp group admin permission set adm.tier.admin true
+lp group admin permission set adm.bypass.mutechat true
+lp group admin permission set adm.bypass.slowmode true
+
+lp user HelperName parent set helper
+lp user HelperName primarygroup set helper
+lp user ModName parent set moderator
+lp user ModName primarygroup set moderator
+lp user AdminName parent set admin
+lp user AdminName primarygroup set admin
+```
+
+Do not grant `adm.*` or `adm.bypass.hierarchy` to the hierarchy test accounts: they intentionally skip rank checks. `adm.immune` is an explicit protection option, not necessary for these examples.
+
+## Configuration and reload
+
+`cooldowns.<command>` is an integer number of seconds, 0–86400; missing entries and 0 disable the cooldown. Cooldowns apply per actor and canonical command. `/gm` and the fixed shortcuts use `cooldowns.gamemode`. Accepted actions start cooldowns; ordinary permission/input denials do not. Teleport requests start cooldowns when accepted even if the eventual teleport is cancelled. Console has no cooldown.
+
+`slowmode.min-seconds` and `.max-seconds` bound accepted intervals (defaults 1–300, maximum 86400). `near.default-radius` and `.max-radius` default to 100 and 1000 (maximum 10000). `clearchat.lines` defaults to 100 (range 1–500). Minimum/default values cannot exceed their respective maximums. `login-fallback: allow|deny` determines whether storage errors/timeouts allow or reject login. It never overrides an existing rejection by another plugin.
+
+`/adm reload` reads and validates both YAML files on ADM's executor. Invalid YAML, types, ranges, aliases, or MiniMessage syntax leave the old immutable snapshot active. A valid snapshot is swapped atomically on the main thread, then each enabled module receives `onReload(snapshot)`. Messages, cooldowns, and limits apply immediately; an active slowmode interval is clamped to updated limits. Cached chat denial components are rebuilt. Inventory views close and edit leases flush and release. File audit settings update without replacing its writer; vanish visibility is refreshed. Module toggles and the root command name/aliases are compared with startup and produce one **restart required** notice per changed setting; registered commands and enabled modules do not change on reload.
+
+All ADM messages use configurable MiniMessage templates in `messages.yml`. Missing keys fall back to built-in defaults and warn once per key. Values supplied by players, including broadcast text, are inserted as literal text, not parsed MiniMessage. Startup validation failure is logged and runs built-in defaults without overwriting the broken files.
+
+## Behavior, threading, and cleanup
+
+- God mode is damage-event cancellation, not persisted player invulnerability.
+- Flight and speed retain their original values and restore on quit or module shutdown. Game mode, healing, feeding, repairing, and inventory clearing are deliberate persistent gameplay changes and are not undone.
+- `/speed` accepts integers 0–10, mapped to Bukkit speed 0.0–1.0. Omitted type selects fly if the target is flying, otherwise walk.
+- `/back` captures the origin of successful ADM teleports and the death location. Returning with `/back` records its own origin, allowing another return. Locations contain only world UUID and numeric coordinates. Ordinary non-ADM teleports do not update them.
+- Teleports use Paper `teleportAsync` so unloaded destination chunks are not synchronously loaded by ADM. Results return through the Bukkit scheduler. Pending request tokens are removed on quit/disable, so late results cannot recreate cleared state. `/tpall` reports requests, not guaranteed successful arrivals.
+- `/top` searches the current loaded column for the highest solid non-hazardous support with two passable, non-liquid blocks above it. It refuses when no safe surface exists. Coordinate teleport accepts finite absolute coordinates inside height/world-border limits, not relative coordinates.
+- Global mute and slowmode are in-memory and survive ADM reload, but reset on plugin shutdown/restart. Per-player god, return locations, cooldowns, slowmode timestamps, and vanish state are removed on quit. Inventory projections refresh every tick; vanish permission visibility refreshes every second.
+- Chat enforcement uses Paper's synchronous `ChatEvent`, intentionally scheduling normal chat handling on the server thread. Early returns, preallocated timestamps, and cached denial components avoid ADM allocations during normal hot-path chat checks. Bypass permissions are checked live.
+- All gameplay/permission/hierarchy access is main-thread confined. Reload workers handle only immutable plain data and local YAML parsers. LuckPerms event callbacks copy UUIDs and schedule cache refresh on the main thread. Async teleport completion schedules all live player/world access back to the main thread.
+- ConcurrentHashMap-backed player caches are documented in their owning services; mutable gameplay state remains main-thread confined. ConfigService's atomic snapshot and message warning sets are safe for cross-thread reads. Service methods own module/permission/hierarchy/cooldown/audit rules, not the command adapter.
+- Accepted feature actions are logged to the server log; sudo logs actor, target, and payload. Inventory access/edits, punishments, staff-mode transitions, freeze changes, and reports go through `api.AuditSink` into SQLite. Whois IP values are not logged to the server log.
+- Shutdown restores staff snapshots on the main thread, closes inventory views, flushes/releases provider leases, restores other temporary player state, unregisters listeners, cancels tasks, and drains database/audit/reload workers within one shared five-second waiting budget. Snapshots are durable before staff kits can be equipped.
+
+## Known limitations
+
+Vanilla offline Ender Chest access and offline invsee remain unavailable. No network offline name lookup is performed. Failed startup modules need a restart. Existing YAML files are not automatically rewritten during an upgrade. Coordinate teleports do not promise safe terrain; `/top` is the safe-surface tool. Other plugins can cancel teleports or chat. If a snapshot's world is unavailable or restoration fails, ADM keeps the snapshot and refuses to discard it. Name/IP associations and offline hierarchy reflect recorded data, not a live identity-provider lookup. Social spy recognizes configured private-message command labels rather than third-party plugin-specific events.
+
+## Inventory HUD
+
+`/adm-hud` (alias `/admhud`) opens the control panel. `adm.hud.use` grants access; each category also needs `adm.hud.category.<id>`. Categories are player, teleport, inventory, chat, vanish, server, settings, moderation, punishments, reports, logs, integrations, and status. `adm.hud.*` includes these nodes. HUD access never grants command permissions: service permission, hierarchy and cooldown checks still apply. HUD infrastructure stays available with every feature module disabled.
+
+Every screen has Back, Home and Close. The selected target carries between action pages; right-click Target restores yourself. Player heads show ping, world, gamemode and staff flags. Search and offline stored-name/UUID input use private chat capture: type `cancel` to leave. A single configurable timeout cancels abandoned input. Destructive actions require confirmation even when optional confirmations are disabled. Speed/coordinate adjusters support shift-click for larger steps. HUD inventories cancel all item transfers, creative/number-key/offhand swaps and drags, including the lower inventory.
+
+`hud.yml` controls titles, category toggles/slots, content slots, materials, custom model data, filler/border, sounds, presets and tooltip text. Override an action item at `buttons.<command>-<argument>` (for example `buttons.heal-`). `/adm reload` validates HUD settings with other configuration and closes all HUD sessions and pending input. Per-viewer sounds, optional confirmations and compact preferences save asynchronously in SQLite. Closing, quit, kick, reload and disable release sessions, pending input and session-owned tasks; late async results cannot reopen a HUD. HUD action entries use audit source `HUD`.
+
+### HUD page overview and status checks
+
+| Category | Features |
+| --- | --- |
+| Player / Teleport / Inventory | Player tools, searchable targets, coordinate adjusters, provider/offline/edit/lock details |
+| Chat / Vanish / Server / Settings | Chat actions and spy, vanish levels/staff kit, guarded maintenance, async per-viewer preferences |
+| Moderation | Freeze, mute/tempmute/unmute, warn, paginated warnings, confirmed clearwarnings and kick |
+| Punishments | Confirmed ban/tempban/ipban/unban, type-filtered paginated history, alts |
+| Reports | Paginated state/details, claim, close, and teleport through the teleport service |
+| Logs | Paginated audit with exact staff, target and action filters; * removes a filter |
+| Integrations | Actual LuckPerms hook/version and registered Ender Chest provider capabilities |
+| Status | Module registration/dependencies/storage health, pending work, bounded timestamped errors, safe tests |
+
+| HUD permission | Meaning |
+| --- | --- |
+| `adm.hud.use` | Open `/adm-hud` or `/admhud` |
+| `adm.hud.category.<id>` | Open the named category (13 IDs listed above) |
+| `adm.hud.status.test` | Run a safe dry run from module items on Status |
+| `adm.hud.*` | All HUD nodes; does not replace underlying command nodes |
+
+Command item names and indicator materials show green for working, yellow for degraded dependencies (fallback LuckPerms tiers, starting/slow storage), red for disabled/failed/unregistered modules, and gray for missing permission. Disabled category items stay unavailable. Status includes config enablement, actual command/listener registration, storage latency/connection, module-scoped pending database work, and bounded recent errors with timestamps. The summary lists non-healthy modules.
+
+Opening Status or Refresh performs an asynchronous `SELECT 1` ping. Results use `status.ttl-seconds` (default 5); no background polling occurs by default. Optional `status.live-refresh-seconds` runs one shared lightweight task only while Status is visible and stops when its last viewer leaves. Test checks module enablement, command resolution, viewer permission, stored-target resolution and SQLite without executing any gameplay/destructive action. Results appear in chat and the module tooltip. Tests require `adm.hud.status.test` and are audited as `HUD`.
+
+### Custom screens and buttons API
+
+Register on the server thread after ADM enables, using shared ADM classes rather than shading them:
+
+```kotlin
+val registry = requireNotNull(server.servicesManager.load(com.tecnor.adm.api.HudRegistry::class.java))
+registry.register(this, "example") {
+    object : com.tecnor.adm.hud.HudScreen {
+        override val id = "example"
+        override val title = "Example"
+        override fun buttons(manager: com.tecnor.adm.hud.HudManager,
+            session: com.tecnor.adm.hud.HudSession, viewer: org.bukkit.entity.Player) = listOf(
+            com.tecnor.adm.hud.HudButton(10, "hello", "Hello", permission = "example.use") { _, _, player, _ ->
+                player.sendMessage("Hello")
+            }
+        )
+    }
+}
+// Add to another screen with registry.addButton(this, "player", button).
+// Before shutdown: registry.unregisterAll(this).
+```
+
+Custom screens appear on Home. Navigation and protection are automatic; callbacks must use their own guarded service layer. `HudManager.navigate(session, viewer, screen)` pushes the previous screen; `refresh` skips unchanged slots. `load(session, work, apply)` runs SQL work asynchronously with plain data and applies live UI changes on the server thread only while the session exists. Screen data may be loaded in `HudScreen.opened`. Provider/plugin removal closes HUDs before stale callbacks can execute.
+
+## Stage 2 behavior
+
+- `/endersee` is a detached read-only snapshot. All clicks, including bottom-inventory clicks, shift clicks, number keys, offhand swaps, double clicks, creative clicks, drops, and drags are cancelled. `/enderedit` opens the provider's live/write-through inventory with one exclusive lock per target UUID. Existing viewers close before editing, and target/other viewer opens are denied until the lock is released. Another ADM staff view is refused while an edit lock exists.
+- Vanilla edits use the actual online player's Ender Chest; there is no stale copy to save over newer contents. Both ender commands report **offline access unavailable** for cached offline players or UUIDs when vanilla is the selected provider. A higher-priority provider can opt into offline access.
+- Target quit, staff quit, reload, disable, and provider unregister close affected views. Closing returns the staff cursor using Bukkit's normal close handling, synchronously flushes the lease, closes it, and releases the UUID lock. Providers must honor the lease contract below.
+- `/invsee` is online-only. The 45-slot projection exposes slots 0–35 (storage/hotbar), 36–39 (boots through helmet), and 40 (offhand); slots 41–44 are unavailable. Read-only mode uses the same cancellation rules as endersee. Editable mode performs transactions against the target's **live** inventory on the server thread, rather than saving a GUI snapshot. Stale target-slot clicks are rejected and refreshed. Regular pickups/placement, shift transfers, hotbar/offhand swaps, drops, collection, and drags are supported; creative cloning is not. Drag transactions run on the next server tick after vanilla cursor restoration and validate all touched slots and the cursor before applying. Target/staff death closes invsee views. Self-editing is refused. Grant only `adm.admin.invsee` to read-only staff; ops and the admin wildcard also have editing permission.
+- `/vanish` without a level toggles off if already vanished, otherwise uses the highest explicitly granted numeric level. A level argument enables/changes that exact permitted level. Numeric level nodes beyond the documented 0–3 are supported through permission attachments. Viewers need `adm.admin.vanish.see` **and** their highest level must be at least the vanished player's chosen level. Unauthorized viewers lose entity and tab visibility. Existing mob targets are cleared; new targeting and item pickups are cancelled. Original pickup eligibility is restored on quit/disable/unvanish.
+- Silent joining is opt-in via `adm.admin.vanish.join` plus `vanish.on-join` (default true); no vanish state persists through quit. Actual quits while vanished are always silent. `vanish.fake-quit` emits a configurable fake quit when manually entering vanish; `vanish.fake-join` emits a fake join when manually leaving it. Both default false. `/list` and `/near` respect viewer visibility.
+- Whois online data includes ping, game mode, block location, and `PLAY_ONE_MINUTE` playtime converted from ticks. The IP line is omitted without `adm.admin.whois.ip`. Offline whois exposes only Paper first-played/last-seen and marks all other fields unavailable. Seen uses the same Paper timestamps, rendered as UTC ISO instants; absent timestamps are unavailable.
+
+## File audit and sink API
+
+`audit.enabled` defaults true. `audit.max-file-bytes` defaults 10485760 (10 MiB; accepted range 1024–2147483647). `audit.rotate-daily` defaults true. One dedicated async writer writes UTF-8 JSONL to `plugins/ADM/audit/audit-YYYY-MM-DD-N.jsonl`, rotating by UTC date or size. A single oversized record is kept intact. Existing files are never overwritten and a new file is started after restart. A valid reload updates options after closing current inventory views. Queued records retain the options at submission; writer shutdown drains rather than discards them. File failures report the full record to the server log as a fallback.
+
+Access records include actor/target UUID and name, inventory type, read/edit mode and provider ID. Edit records include changed slot numbers, before/after material and amount, and Base64 Paper item serialization (including metadata). Gameplay objects are serialized on the main thread; only immutable strings/UUIDs/instants reach the writer. Restrict access to the audit directory like other administrative logs.
+
+`com.tecnor.adm.api.AuditSink` is registered with Bukkit's `ServicesManager`. Inventory and moderation operations use the highest-priority registered sink. ADM now owns a database-backed default sink independent of the inventory toggle; third-party sinks can replace it at a higher service priority. `audit.file-secondary: true` writes every record to the existing JSONL sink as well. Database audit failure falls back to the file sink even when secondary logging is false. Database rows record staff, target, action, details, timestamp, and source `COMMAND`.
+
+`audit.retention-days` and `reports.retention-days` default to 90. `/adm cleanup` prunes audit rows and closed reports older than their retention thresholds; open/claimed reports and punishment history are retained. `audit.prune-on-start` defaults true. File rotation settings still apply to secondary/fallback files; database rows are pruned rather than rotated. Protect the database and audit files: they contain administrative and player information.
+
+## SQLite storage and punishments
+
+SQLite uses `plugins/ADM/adm.sqlite`, WAL journaling, a three-second busy timeout, and transactional `PRAGMA user_version` migrations. The `api.Storage` service exposes bounded asynchronous work, stored name resolution, and a thread-safe health snapshot. One database worker has a bounded 128-job queue. SQL and migrations run only on that worker; gameplay, permissions, item serialization, and inventory restoration run on the server thread. Pre-login waits are bounded and occur only on Paper's asynchronous login thread; the chat mute check never performs database work.
+
+Xerial `org.xerial:sqlite-jdbc:3.53.4.0` is an implementation dependency. ADM first uses an available `org.sqlite.JDBC` from its runtime classpath. Otherwise it loads `plugins/ADM/sqlite-jdbc-3.53.4.0.jar`, `plugins/ADM/libraries/sqlite-jdbc.jar`, or its pinned `plugins/ADM/libraries/sqlite-jdbc-3.53.4.0.jar` cache; if missing, the full distribution is downloaded from Maven Central. Use the full unmodified JDBC jar, not a sources/javadoc/native-only jar. No mandatory Paper library declaration prevents ADM from enabling when the driver is unavailable. A blocked download/native load/connection is logged, shown red in HUD health, and disables only storage-dependent modules. To simulate failure, remove the runtime driver and cached/supplied jars and block Maven Central before restarting. Normal startup logs the actual SQLite engine version and confirms migrations plus a temporary-table transactional read/write self-check. Check `/adm storage-info` or HUD Status: normal state is `CONNECTED`. Preferences migrate at schema version 4; existing schema 1–3 data is preserved. Back up the database together with its WAL/SHM files only while quiescent, or stop the server first.
+
+Pre-login records event UUID, name, IP, and first/last login timestamps. Name history maps recorded names to UUIDs, case-insensitively; reused names resolve to the most recent recorded account. Offline punishment targets must exist in this table; use a UUID to disambiguate. `/whois` and `/seen` retain Paper information and append stored first/last login and name history. Stored last IP is shown only with `adm.admin.whois.ip`, including offline results.
+
+Bans, IP bans, mutes, warnings, and kicks are recorded durably before live effects. Durations accept positive integer minutes/hours/days (`30m`, `2h`, `7d`, `30d`); bans and mutes without a duration are permanent. Expiry checks use timestamps, not timer tasks. Mutes are loaded during pre-login and cached through the session, then evicted on quit. Warnings cleared with `/clearwarnings` stop contributing to escalation but remain in `/history`. IP bans apply to all accounts using the IP; alts only groups accounts by last stored IP and is not proof of common ownership. List commands use indexed SQL count/limit/offset pagination, with `punishments.page-size` default 10 (1–50).
+
+Example escalation, evaluated on the new uncleared warning count and applied through the same punishment transaction/services:
+
+```yaml
+punishments:
+  default-reason: No reason specified
+  page-size: 10
+  escalation:
+    - warnings: 3
+      action: tempmute
+      duration: 1h
+    - warnings: 5
+      action: tempban
+      duration: 1d
+```
+
+## Staff tools and reports
+
+Freeze persists until explicitly toggled off. Block-position movement, teleports, interaction, inventory changes, and commands outside `freeze.command-whitelist` are blocked. The title is sent once per freeze/join; one shared actionbar task runs only while at least one online, non-exempt player is frozen. `freeze.actionbar-seconds` must be at least 5. `freeze.quit-action` accepts `notify` (default; `adm.mod.notify` recipients), `none`, or `command:<console command>` with `{player}` substitution. Relogging reloads persisted freeze state; bypass holders are exempt.
+
+Staff chat uses `staffchat.prefix` MiniMessage and cached LuckPerms prefix/suffix (legacy ampersand formatting) when available. Messages are literal text. `/sc message` sends once; `/sc` toggles routing. Spy toggles are cleared on quit. `spy.social-commands` identifies social commands; `spy.ignored-commands` defaults to login/register to avoid exposing authentication payloads.
+
+Staff mode closes existing inventory sessions, serializes the full inventory including armor/offhand plus game mode, flight flags/speeds, location, and prior vanish level on the main thread, and commits the snapshot asynchronously **before** swapping to the staff kit. Entry/recovery/exit transitions lock inventory manipulation. Kit items cannot be dropped, transferred, or collected through invsee. Slot 1 randomly teleports (`adm.mod.tp`); right-click a player with slot 2 to freeze (`adm.mod.freeze`), slot 3 to inspect (`adm.admin.whois`), or slot 4 to open read-only invsee (`adm.admin.invsee`). Staff mode enables creative flight and vanish. Exact snapshot state is restored on exit/quit/disable, saved to Paper player data, and only then removed from storage. A surviving snapshot is loaded before play on the next join after a crash. Snapshot flight/speed state takes precedence over earlier temporary `/fly` or `/speed` caches for that player.
+
+Reports require a stored player target and a reason. `adm.report` defaults true; `reports.cooldown-seconds` defaults 60. Online staff with `adm.mod.notify` receive notifications. The 54-slot `/reports` GUI shows 45 entries per page, including open/claimed/closed status. Left-click claims an open report; right-click closes it; shift-left teleports to an online reported player. Each action has its own permission. Atomic conditional updates prevent double claims. All clicks and drags, including the viewer's bottom inventory, are cancelled.
+
+`/adm log` also uses a protected 45-entry paginated inventory for players and paginated text for console. Filters are exact, case-insensitive staff name, target name, and action; use `*` to omit positional filters, e.g. `/adm log Alice * BAN 2` or `/adm log 2`. Arrow buttons navigate pages. GUI items never enter player inventories.
+
+## Ender Chest provider guide
+
+All provider/registry/lease calls are **server-thread-only**. Add ADM as a required dependency loaded before your provider plugin, with shared classpath access; compile against ADM's API without copying or shading its classes. Acquire the registry after ADM has enabled its inventory module:
+
+```kotlin
+val registry = requireNotNull(server.servicesManager.load(EnderChestProviderRegistry::class.java))
+registry.register(this, provider)
+// Before your provider's backing service shuts down:
+registry.unregister(this, provider.id)
+```
+
+API package: `com.tecnor.adm.api`. The signatures are:
+
+```kotlin
+interface EnderChestProvider {
+    val id: String
+    val priority: Int // defaults to 0; higher wins
+    val supportsOffline: Boolean
+    fun supports(target: UUID): Boolean
+    fun open(target: UUID, editable: Boolean): EnderChestLease
+}
+interface EnderChestLease : AutoCloseable {
+    val inventory: Inventory
+    fun flush()
+    override fun close()
+}
+```
+
+- IDs must be unique lowercase identifiers. Registry `register(owner, provider)`, `unregister(owner, id)`, `unregisterAll(owner)`, `providers()`, and `select(target)` are exposed. Only the owning plugin may unregister its entry. Explicit unregister closes its ADM views **before** removal; ADM also unregisters disabled plugin owners. Explicit unregister in your own `onDisable` is recommended so your backing service is still usable during flush.
+- Highest priority accepting the target wins (ties use registration order); vanilla accepts all UUIDs at the minimum integer priority. Selection does not silently fall through when a selected provider lacks offline support, preventing accidental access to a different chest.
+- `open` must return a chest-shaped inventory of 9–54 slots in multiples of nine. Editable leases must exclude all owner GUI access and competing API writes, including offline-to-online transitions, until `close`. ADM prevents its own competing staff views and vanilla Ender Chest opens, but cannot enforce writes in another plugin's private storage code. Close existing provider viewers before returning a write-buffer lease.
+- Prefer a live backing inventory. If using a buffer, `flush` must synchronously and atomically apply changed items to the provider's authoritative data without overwriting concurrent data. ADM flushes after accepted ender edit ticks and again at close; `close` releases provider-owned resources. Do not schedule a deferred save that can race reconnect, server player saves, or lock release. `flush`/`close` must be reliable and `close` must tolerate cleanup after partial acquisition. Provider failure is logged; arbitrary broken provider persistence cannot be repaired by ADM.
+- Read leases are copied into a snapshot and immediately closed. Never expose mutable storage to asynchronous work. UUIDs, not player names, identify chests. Third-party code must not retain a lease inventory and mutate it after closing.
+
+### Example offline-capable test provider (not installed or enabled)
+
+This is a **separate test plugin**, not ADM runtime code. It owns isolated in-memory test chests for configured UUIDs, online or offline; it does **not** read, replace, or persist vanilla player data. Contents survive ADM reload and staff/target disconnects while the test plugin remains enabled, but not a test-plugin/server restart. Replace the UUID below with a known test account. A production integration replaces the map with its own authoritative service and enforces that service's external access locks.
+
+```kotlin
+package example
+
+import com.tecnor.adm.api.EnderChestLease
+import com.tecnor.adm.api.EnderChestProvider
+import com.tecnor.adm.api.EnderChestProviderRegistry
+import org.bukkit.Bukkit
+import org.bukkit.Material
+import org.bukkit.inventory.Inventory
+import org.bukkit.inventory.ItemStack
+import org.bukkit.plugin.java.JavaPlugin
+import java.util.UUID
+
+class MemoryTestProvider(private val targets: Set<UUID>) : EnderChestProvider {
+    override val id = "memory-test"
+    override val priority = 100
+    override val supportsOffline = true
+    private val chests = mutableMapOf<UUID, Inventory>()
+    private val editing = mutableSetOf<UUID>()
+    override fun supports(target: UUID) = target in targets
+
+    override fun open(target: UUID, editable: Boolean): EnderChestLease {
+        check(Bukkit.isPrimaryThread())
+        require(supports(target))
+        check(target !in editing)
+        val chest = chests.getOrPut(target) {
+            Bukkit.createInventory(null, 27).also { it.setItem(0, ItemStack(Material.DIAMOND, 8)) }
+        }
+        if (editable) editing.add(target)
+        return object : EnderChestLease {
+            override val inventory = chest
+            override fun flush() = Unit // inventory is already authoritative
+            override fun close() { if (editable) editing.remove(target) }
+        }
+    }
+}
+
+class TestEnderPlugin : JavaPlugin() {
+    private lateinit var registry: EnderChestProviderRegistry
+    private lateinit var provider: MemoryTestProvider
+    override fun onEnable() {
+        registry = requireNotNull(server.servicesManager.load(EnderChestProviderRegistry::class.java))
+        provider = MemoryTestProvider(setOf(UUID.fromString("00000000-0000-0000-0000-000000000001")))
+        registry.register(this, provider)
+    }
+    override fun onDisable() {
+        if (::registry.isInitialized && ::provider.isInitialized) registry.unregister(this, provider.id)
+    }
+}
+```
+
+The example plugin's `paper-plugin.yml`:
+
+```yaml
+name: TestEnder
+version: '1.0'
+main: example.TestEnderPlugin
+api-version: '1.21'
+dependencies:
+  server:
+    ADM:
+      load: BEFORE
+      required: true
+      join-classpath: true
+```
+
+## Manual test checklist
+
+1. Build through Kodari's Compile window; verify a successful Java 21 build. No compilation or server execution is asserted by this checklist.
+2. Start on Paper 1.21.x without LuckPerms; confirm YAML generation and all configured module statuses. Repeat with LuckPerms, then with every module false: no feature commands should activate; infrastructure still handles storage fallback.
+3. Test `/adm` and its alias, reload/version/debug/storage-info, permission denial, and console execution. Confirm author `voidles02` and Stage 6 version. Debug toggles diagnostic logging ON/OFF while still listing module states.
+4. Test every game mode, `/gm`, all four shortcuts, fly, both speed types including 0/10, god damage protection, heal/feed, repair hand/all including armor/offhand, and clear including armor/offhand. Test self, online others, unknown players, extra arguments, and console with explicit targets.
+5. Give base tool permission but not `.others`: others must be denied. Add `.others` and test heal/feed/god/clear on lower, equal, higher, and immune non-op targets. Equal/higher and immune must be denied. Repeat with tier markers without LuckPerms, then primary group weights with LuckPerms; verify a live LP user recalculation updates rank. Test console and hierarchy bypass.
+6. Test tp/tphere/tpall, absolute tppos with/without world, invalid world, NaN/out-of-bounds coordinates, and unloaded destination chunks. Confirm main-thread chunk loading is not initiated by ADM. Cancel a teleport from another plugin and check its failure message.
+7. Test back before any saved location, after each ADM teleport, after death/respawn, and twice consecutively. Quit/rejoin: prior back location must be absent. Test top in caves, under a roof, near hazardous blocks, in liquid columns, and where no safe surface exists.
+8. Test near default/custom/invalid radius, same-world filtering, ping self/other/console, and list. Completion must contain only online names and fixed values, not offline names/world names.
+9. Test broadcast, clear chat, global mute/bypass, slowmode/off/bypass, configured interval bounds, and sudo chat/command/hierarchy/nested invocation. Slowmode must allow the first message, block an immediate second, and allow another after the interval. Test with non-op users: ops have bypasses by default.
+10. Change a message and cooldown, reload, and verify immediate changes, including cached chat denials. Remove a message key: built-in fallback plus one warning. Invalid YAML, unbalanced tags, wrong booleans, and bad ranges must preserve the whole old snapshot.
+11. Change each module toggle and the ADM root/aliases, reload, and verify individual restart-required notices with unchanged live registration. Restart and verify the changes. Set a game-mode cooldown and alternate gm/gmc/gms: shortcuts must share it.
+12. Enable temporary god/fly/speed, populate back and slowmode timestamps/cooldowns, then quit/rejoin. God/back/cooldowns must be cleared, speeds/flight restored, and first chat allowed. Disable ADM with players online and check restoration and listener/task cleanup. Stop during reload or a pending teleport: no late state reinsertion or scheduler-after-disable errors.
+13. With vanilla only, use both ender commands against online, cached offline, and offline UUID targets. Offline must say unavailable. Test read-only left/right/shift/number-key/offhand/double/creative clicks, drops and drags in both inventories: nothing changes. Grant edit and verify transfers update the real chest.
+14. While editing, try target chest opens and a second staff edit/see. No simultaneous writer or duplicate item may appear. Quit target, quit staff, reload ADM, and disable ADM in separate trials with items in slots and on the staff cursor. Verify views close, items are conserved, and the chest is accessible afterward.
+15. Install the separate documented test provider only on a test server. Access its configured UUID offline with both ender commands, edit, close and reopen, then test staff/target quits and ADM reload. Unregister/disable the provider with an open view: it must close before provider removal. Vanilla targets still use vanilla behavior.
+16. Invsee offline must report unavailable. Online read-only must reject every edit path. Grant the edit node; test armor/offhand/storage transactions and target movement, pickup, inventory clicks and death while viewing. Verify live changes are never overwritten by a closing snapshot, stale clicks refresh, multiple staff cannot duplicate, and quit/reload/disable closes views.
+17. Check JSONL access/edit records and metadata changes. Set max size to 1024, generate edits, and check rotation; daily files rotate at UTC midnight. Toggle audit options via reload. Stop with pending records and verify they drain. Make the audit directory unwritable and verify server-log fallback records.
+18. Use non-op viewers with no see permission, see but lower level, and see plus equal/higher level. Test `/vanish`, `/v`, denied level and level changes, tab/entity visibility, mob target clearing and new targeting, item pickup, new viewer joins, and live permission changes. Grant silent-join permission and reconnect: actual join/quit messages must be absent and state removed on quit. Test optional fake messages and disable restoration.
+19. Whois without IP permission must omit the IP line; with it, show online IP. Test ping, game mode, location and playtime. Offline whois must expose only Paper dates and mark the rest unavailable. Seen must match Paper first-played/last-seen, including console, missing dates, cached names and UUIDs.
+20. Remove the cached driver and block Maven Central. ADM must enable, storage-info must show FAILED, storage-dependent modules must be unavailable, and Stage 1/2 and staff chat must work. Test both login fallback settings; unblock and restart.
+21. Apply bans, IP bans, mutes, warnings, clears and removals; restart and verify persistence/expiry. Test every punishment command against lower/equal/higher/immune offline and online targets. Test both configured warning thresholds. Populate 500+ rows and check history/warnings/alts pages and stored aliases/IP gating.
+22. Freeze a non-exempt player; test block movement, rotation, interaction, teleport, whitelisted and blocked commands, quit notification/action, and reconnect. Freeze multiple players; unfreeze/quit the last one and verify the shared actionbar task stops.
+23. Enter staff mode with metadata-rich items in every inventory region and distinct flight/game mode/location settings. Test every kit tool and inventory-transfer prevention. Exit, quit, disable, and force-stop/restart separately; compare exact restored state and retained snapshots when a world or database is unavailable. Repeat after using Stage 1 fly/speed.
+24. Test staffchat toggle/one-shot, rank formatting, command/social spy permissions, ignored credentials, and quit clearing. Submit reports with cooldown; test claim races, close and teleport permissions, status display, 500+ rows, bottom inventory clicks, creative clicks, shift/hotbar/offhand swaps and drags.
+25. Check database inventory edit and punishment audit records, COMMAND source, optional JSONL secondary and fallback on failure. Paginate `/adm log` with 500+ rows and mixed filters; try all GUI item-extraction paths. Test cleanup retention without deleting open reports or punishment history.
+26. Open `/adm-hud` and `/admhud`; check all 13 category nodes separately, individual command nodes and `.others`, Back/Home/Close and persistent target selection. Compare command and HUD outcomes, hierarchy denials and cooldowns. Confirm every destructive action, including kick/clear/tpall/sudo/ban/tempban/ipban/clearwarnings, and cancel each without effects.
+27. Test player search and offline stored UUIDs, numeric/coordinate/vanish presets, arbitrary reason and duration input, permanent durations and their separate permissions. Type cancel, wait for timeout, quit, kick and reload during input/loading. Private input must not reach normal or staff chat, and no late result may reopen a closed HUD.
+28. Attempt every inventory click/drag, hotbar/offhand swap, shift transfer, drop, double-click and creative clone in every HUD screen. Check item conservation, loading placeholders, pagination/filter boundaries and live report detail refresh. Save preferences, close immediately and restart: preferences must persist.
+29. Inspect SQLite startup's engine version and read/write self-check, schema version 4 and preserved older data. Use `/adm storage-info` and Status to confirm CONNECTED. Test full provided JDBC jar and cached fallback, blocked/absent driver, unwritable database path and slow storage. Missing permission is gray; disabled/failed is red; absent LuckPerms/slow storage is yellow. Disable every feature module: the HUD still opens with unavailable categories.
+30. Select a Status module and use Test with/without `adm.hud.status.test`; confirm chat/tooltip pass/fail and no gameplay mutations. Enable optional live refresh and open Status for multiple viewers: exactly one shared refresh task, stopping after the last Status viewer leaves. Check HUD source on action and async outcome audit rows, including provider-backed edits, and confirm no sessions/input/tasks survive closing/reload/quit/disable.

@@ -1,0 +1,322 @@
+name: ADM
+version: '${version}'
+main: com.tecnor.adm.ADMPlugin
+description: Advanced Admin Management - Stage 6 inventory HUD and system health
+api-version: '1.21'
+authors: [voidles02]
+
+dependencies:
+  server:
+    LuckPerms:
+      load: BEFORE
+      required: false
+      join-classpath: true
+
+permissions:
+  adm.*:
+    description: ADM command permissions, bypasses, and hierarchy markers
+    default: op
+    children:
+      adm.admin.*: true
+      adm.mod.*: true
+      adm.bypass.*: true
+      adm.tier.mod: true
+      adm.tier.admin: true
+      adm.immune: true
+      adm.report: true
+      adm.hud.*: true
+  adm.admin.*:
+    description: Administrator and moderator tools
+    default: op
+    children:
+      adm.mod.*: true
+      adm.admin.god: true
+      adm.admin.god.others: true
+      adm.admin.repair: true
+      adm.admin.repair.all: true
+      adm.admin.clear: true
+      adm.admin.clear.others: true
+      adm.admin.tpall: true
+      adm.admin.tppos: true
+      adm.admin.broadcast: true
+      adm.admin.sudo: true
+      adm.admin.reload: true
+      adm.admin.version: true
+      adm.admin.debug: true
+      adm.admin.endersee: true
+      adm.admin.enderedit: true
+      adm.admin.invsee: true
+      adm.admin.invsee.edit: true
+      adm.admin.vanish: true
+      adm.admin.vanish.see: true
+      adm.vanish.level.1: true
+      adm.admin.whois: true
+      adm.admin.whois.ip: true
+      adm.admin.seen: true
+      adm.admin.storage-info: true
+      adm.admin.ban: true
+      adm.admin.tempban: true
+      adm.admin.ipban: true
+      adm.admin.unban: true
+      adm.admin.history: true
+      adm.admin.alts: true
+      adm.admin.spy.commands: true
+      adm.admin.spy.social: true
+      adm.admin.log: true
+      adm.admin.cleanup: true
+  adm.mod.*:
+    description: Moderator tools
+    default: op
+    children:
+      adm.mod.gamemode: true
+      adm.mod.gamemode.others: true
+      adm.mod.fly: true
+      adm.mod.fly.others: true
+      adm.mod.speed: true
+      adm.mod.speed.others: true
+      adm.mod.heal: true
+      adm.mod.heal.others: true
+      adm.mod.feed: true
+      adm.mod.feed.others: true
+      adm.mod.tp: true
+      adm.mod.tphere: true
+      adm.mod.back: true
+      adm.mod.top: true
+      adm.mod.near: true
+      adm.mod.ping: true
+      adm.mod.list: true
+      adm.mod.clearchat: true
+      adm.mod.mutechat: true
+      adm.mod.slowmode: true
+      adm.mod.mute: true
+      adm.mod.tempmute: true
+      adm.mod.unmute: true
+      adm.mod.warn: true
+      adm.mod.warnings: true
+      adm.mod.clearwarnings: true
+      adm.mod.kick: true
+      adm.mod.freeze: true
+      adm.mod.staffchat: true
+      adm.mod.staffmode: true
+      adm.mod.reports: true
+      adm.mod.reports.claim: true
+      adm.mod.reports.close: true
+      adm.mod.notify: true
+  adm.bypass.*:
+    description: All ADM bypasses
+    default: op
+    children:
+      adm.bypass.hierarchy: true
+      adm.bypass.mutechat: true
+      adm.bypass.slowmode: true
+      adm.bypass.freeze: true
+  adm.mod.gamemode:
+    default: op
+  adm.mod.gamemode.others:
+    default: op
+  adm.mod.fly:
+    default: op
+  adm.mod.fly.others:
+    default: op
+  adm.mod.speed:
+    default: op
+  adm.mod.speed.others:
+    default: op
+  adm.mod.heal:
+    default: op
+  adm.mod.heal.others:
+    default: op
+  adm.mod.feed:
+    default: op
+  adm.mod.feed.others:
+    default: op
+  adm.mod.tp:
+    default: op
+  adm.mod.tphere:
+    default: op
+  adm.mod.back:
+    default: op
+  adm.mod.top:
+    default: op
+  adm.mod.near:
+    default: op
+  adm.mod.ping:
+    default: op
+  adm.mod.list:
+    default: op
+  adm.mod.clearchat:
+    default: op
+  adm.mod.mutechat:
+    default: op
+  adm.mod.slowmode:
+    default: op
+  adm.admin.god:
+    default: op
+  adm.admin.god.others:
+    default: op
+  adm.admin.repair:
+    default: op
+  adm.admin.repair.all:
+    default: op
+  adm.admin.clear:
+    default: op
+  adm.admin.clear.others:
+    default: op
+  adm.admin.tpall:
+    default: op
+  adm.admin.tppos:
+    default: op
+  adm.admin.broadcast:
+    default: op
+  adm.admin.sudo:
+    default: op
+  adm.admin.reload:
+    default: op
+  adm.admin.version:
+    default: op
+  adm.admin.debug:
+    default: op
+  adm.admin.endersee:
+    default: op
+  adm.admin.enderedit:
+    default: op
+  adm.admin.invsee:
+    default: op
+  adm.admin.invsee.edit:
+    default: op
+  adm.admin.vanish:
+    default: op
+  adm.admin.vanish.see:
+    default: op
+  adm.admin.vanish.join:
+    description: Opt-in automatic silent vanish on join; also requires base and level permissions
+    default: false
+  adm.vanish.level.0:
+    default: false
+  adm.vanish.level.1:
+    default: op
+  adm.vanish.level.2:
+    default: false
+  adm.vanish.level.3:
+    default: false
+  adm.admin.whois:
+    default: op
+  adm.admin.whois.ip:
+    default: op
+  adm.admin.seen:
+    default: op
+  adm.bypass.hierarchy:
+    default: op
+  adm.bypass.mutechat:
+    default: op
+  adm.bypass.slowmode:
+    default: op
+  adm.bypass.freeze:
+    description: Exempt from freeze enforcement
+    default: op
+  adm.tier.mod:
+    default: op
+  adm.tier.admin:
+    default: op
+  adm.immune:
+    default: op
+  adm.report:
+    default: true
+  adm.admin.storage-info:
+    default: op
+  adm.mod.mute:
+    default: op
+  adm.mod.tempmute:
+    default: op
+  adm.mod.unmute:
+    default: op
+  adm.mod.warn:
+    default: op
+  adm.mod.warnings:
+    default: op
+  adm.mod.clearwarnings:
+    default: op
+  adm.mod.kick:
+    default: op
+  adm.admin.ban:
+    default: op
+  adm.admin.tempban:
+    default: op
+  adm.admin.ipban:
+    default: op
+  adm.admin.unban:
+    default: op
+  adm.admin.history:
+    default: op
+  adm.admin.alts:
+    default: op
+  adm.mod.freeze:
+    default: op
+  adm.mod.staffchat:
+    default: op
+  adm.mod.staffmode:
+    default: op
+  adm.admin.spy.commands:
+    default: op
+  adm.admin.spy.social:
+    default: op
+  adm.mod.reports:
+    default: op
+  adm.mod.reports.claim:
+    default: op
+  adm.mod.reports.close:
+    default: op
+  adm.mod.notify:
+    default: op
+  adm.admin.log:
+    default: op
+  adm.admin.cleanup:
+    default: op
+  adm.hud.*:
+    default: op
+    children:
+      adm.hud.use: true
+      adm.hud.category.player: true
+      adm.hud.category.teleport: true
+      adm.hud.category.inventory: true
+      adm.hud.category.chat: true
+      adm.hud.category.vanish: true
+      adm.hud.category.server: true
+      adm.hud.category.settings: true
+      adm.hud.category.moderation: true
+      adm.hud.category.punishments: true
+      adm.hud.category.reports: true
+      adm.hud.category.logs: true
+      adm.hud.category.integrations: true
+      adm.hud.category.status: true
+      adm.hud.status.test: true
+  adm.hud.use:
+    default: op
+  adm.hud.category.player:
+    default: op
+  adm.hud.category.teleport:
+    default: op
+  adm.hud.category.inventory:
+    default: op
+  adm.hud.category.chat:
+    default: op
+  adm.hud.category.vanish:
+    default: op
+  adm.hud.category.server:
+    default: op
+  adm.hud.category.settings:
+    default: op
+  adm.hud.category.moderation:
+    default: op
+  adm.hud.category.punishments:
+    default: op
+  adm.hud.category.reports:
+    default: op
+  adm.hud.category.logs:
+    default: op
+  adm.hud.category.integrations:
+    default: op
+  adm.hud.category.status:
+    default: op
+  adm.hud.status.test:
+    default: op
