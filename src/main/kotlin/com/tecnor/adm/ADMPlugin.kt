@@ -15,6 +15,7 @@ import com.tecnor.adm.hud.HudManager
 import com.tecnor.adm.integration.GrimCompatibility
 import com.tecnor.adm.integration.LuckPermsIntegration
 import com.tecnor.adm.integration.LuckPermsRoleSetup
+import com.tecnor.adm.integration.WorldGuardCompatibility
 import com.tecnor.adm.message.MessageService
 import com.tecnor.adm.module.CoreModule
 import com.tecnor.adm.module.FeatureModule
@@ -23,12 +24,14 @@ import com.tecnor.adm.punishment.PunishmentEnforcement
 import com.tecnor.adm.punishment.PunishmentService
 import com.tecnor.adm.punishment.Punishments
 import com.tecnor.adm.service.ChatService
+import com.tecnor.adm.service.AnticheatService
 import com.tecnor.adm.service.InformationService
 import com.tecnor.adm.service.InventoryToolsService
 import com.tecnor.adm.service.PlayerToolsService
 import com.tecnor.adm.service.ReportsService
 import com.tecnor.adm.service.StaffCommunicationsService
 import com.tecnor.adm.service.TeleportService
+import com.tecnor.adm.service.TpaService
 import com.tecnor.adm.service.VanishService
 import com.tecnor.adm.settings.ConfigService
 import com.tecnor.adm.settings.SettingsLoader
@@ -104,13 +107,23 @@ class ADMPlugin : JavaPlugin() {
                 logger.log(Level.WARNING, "LuckPerms integration unavailable; using ADM tier markers.", failure)
             }
         }
+        val worldGuard = if (server.pluginManager.isPluginEnabled("WorldGuard")) {
+            runCatching { WorldGuardCompatibility(this) }.onFailure {
+                logger.log(Level.WARNING, "WorldGuard integration unavailable; relying on Bukkit teleport events.", it)
+            }.getOrNull()
+        } else null
         server.pluginManager.registerEvents(CoreListener(this, permissions, hierarchy), this)
         moduleManager.register(CoreModule(this, initial.commands(), moduleManager, adminService, messages))
         val playerTools = PlayerToolsService(this, moduleManager, permissions, hierarchy)
         moduleManager.register(FeatureModule(this, moduleManager, messages, playerTools))
-        moduleManager.register(FeatureModule(this, moduleManager, messages, TeleportService(this, moduleManager, permissions, messages, scheduler)))
+        moduleManager.register(FeatureModule(this, moduleManager, messages,
+            TeleportService(this, moduleManager, permissions, messages, scheduler, worldGuard)))
+        moduleManager.register(FeatureModule(this, moduleManager, messages,
+            TpaService(this, moduleManager, permissions, settings, messages, scheduler, worldGuard)))
         val information = InformationService(this, moduleManager, permissions, settings)
         moduleManager.register(FeatureModule(this, moduleManager, messages, information))
+        moduleManager.register(FeatureModule(this, moduleManager, messages,
+            AnticheatService(this, moduleManager, permissions, grimCompatibility)))
         moduleManager.register(FeatureModule(this, moduleManager, messages, ChatService(this, moduleManager, permissions, settings, messages, hierarchy)))
         enderChestProviders = EnderChestProviderRegistry()
         val inventories = InventoryToolsService(this, moduleManager, permissions, messages, enderChestProviders)

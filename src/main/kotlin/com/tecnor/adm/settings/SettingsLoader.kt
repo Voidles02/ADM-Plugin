@@ -13,8 +13,15 @@ import java.nio.file.Path
  * Used synchronously only during startup, and on the ADM executor during reload.
  */
 object SettingsLoader {
-    private val moduleIds = listOf("core", "player-tools", "teleport", "information", "chat", "inventory", "vanish",
+    private val moduleIds = listOf("core", "player-tools", "teleport", "tpa", "information", "chat", "anticheat", "inventory", "vanish",
         "punishments", "staff-chat", "staff-tools", "reports", "audit")
+    private val featureCommandNames = setOf(
+        "adm-connect", "anticheat", "announcement", "annoucement", "broadcast", "clearchat", "mutechat", "slowmode", "sudo",
+        "near", "ping", "list", "whois", "seen", "endersee", "enderedit", "invsee", "gamemode", "gm", "gmc", "gms",
+        "gma", "gmsp", "fly", "speed", "god", "heal", "feed", "repair", "clear", "report", "reports", "staffchat", "sc",
+        "spy", "tp", "tphere", "tpall", "tppos", "back", "top", "tpa", "tpaccept", "tpdeny",
+        "admtpa", "admtpaccept", "admtpdeny", "vanish", "v"
+    )
 
     @JvmStatic
     fun load(directory: Path): SettingsSnapshot {
@@ -83,6 +90,9 @@ object SettingsLoader {
         }
         val usedNames = hashSetOf(name)
         for (alias in aliases) require(usedNames.add(alias)) { "Duplicate command name or alias: $alias" }
+        require(usedNames.none { it in featureCommandNames }) {
+            "commands.name and commands.aliases cannot use labels reserved by ADM feature commands"
+        }
 
         val fallback = string(config, "login-fallback", "allow")
         require(fallback == "allow" || fallback == "deny") { "login-fallback must be allow or deny" }
@@ -91,6 +101,10 @@ object SettingsLoader {
         if (cooldowns is ConfigurationSection) {
             for (key in cooldowns.getKeys(false)) boundedInteger(config, "cooldowns.$key", 0, 0, 86400)
         }
+        val tpa = config.get("tpa")
+        require(tpa == null || tpa is ConfigurationSection) { "tpa must be a YAML section" }
+        boundedInteger(config, "tpa.cooldown-seconds", 5, 0, 86400)
+        boundedInteger(config, "tpa.protection-seconds", 15, 0, 86400)
         val slowMin = boundedInteger(config, "slowmode.min-seconds", 1, 1, 86400)
         val slowMax = boundedInteger(config, "slowmode.max-seconds", 300, 1, 86400)
         require(slowMin <= slowMax) { "slowmode.min-seconds must not exceed max-seconds" }
@@ -155,6 +169,7 @@ object SettingsLoader {
         "allow",
         mapOf("modules" to mapOf("core" to true),
             "commands" to mapOf("name" to "adm", "aliases" to listOf("advancedadminmanagement")),
+            "tpa" to mapOf("cooldown-seconds" to 5, "protection-seconds" to 15),
             "login-fallback" to "allow"),
         emptyMap()
     )

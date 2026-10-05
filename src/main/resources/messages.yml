@@ -43,6 +43,32 @@ teleport:
   out-of-bounds: '<prefix><red>Coordinates are outside the world bounds or border.</red>'
   no-back: '<prefix><yellow>No previous location is available in this session.</yellow>'
   no-safe-top: '<prefix><red>No safe top location was found at this X/Z.</red>'
+  region-denied: '<prefix><red>WorldGuard does not allow this teleport.</red>'
+
+tpa:
+  request-sent: '<prefix><green>TPA request sent to <target>.</green>'
+  request-received: '<prefix><yellow><requester> wants to teleport to you. Use /tpaccept or /tpdeny within 60 seconds.</yellow>'
+  request-accepted: '<prefix><green>Accepted <requester>''s TPA request.</green>'
+  request-denied-target: '<prefix><gray>Denied <requester>''s TPA request.</gray>'
+  request-denied: '<prefix><red><target> denied your TPA request.</red>'
+  request-pending: '<prefix><yellow>You already have a pending TPA request.</yellow>'
+  target-pending: '<prefix><yellow><target> already has a pending TPA request.</yellow>'
+  no-request: '<prefix><yellow>You have no active TPA requests.</yellow>'
+  request-not-found: '<prefix><red>No active request from <requester> was found.</red>'
+  requester-offline: '<prefix><red>The requester is no longer online.</red>'
+  requester-left: '<prefix><yellow><requester> left; their TPA request was cancelled.</yellow>'
+  target-left: '<prefix><yellow><target> left; your TPA request was cancelled.</yellow>'
+  self: '<prefix><red>You cannot send a TPA request to yourself.</red>'
+  cooldown: '<prefix><yellow>Wait <seconds> seconds before sending another TPA request.</yellow>'
+  teleport-started: '<prefix><gray>Teleporting to <target>...</gray>'
+  teleport-success: '<prefix><green>Teleported to <target>.</green>'
+  teleport-complete: '<prefix><green><requester> teleported to you.</green>'
+  teleport-failed: '<prefix><red>Teleport to <target> failed or was blocked.</red>'
+  teleport-failed-target: '<prefix><red><requester> could not be teleported to you.</red>'
+  region-denied: '<prefix><red>WorldGuard does not allow this TPA teleport.</red>'
+  invalid-duration: '<prefix><red>Use a duration from 0 to 86400 seconds, such as 5s, 2m, or 1h.</red>'
+  setting-updated: '<prefix><green>TPA <setting> set to <seconds> seconds.</green>'
+  setting-save-failed: '<prefix><red>Could not save the TPA setting. Check the server log.</red>'
 
 information:
   list: '<prefix><gray>Online (<count>): <players></gray>'
@@ -80,6 +106,19 @@ chat:
   sudo-failed: '<prefix><red>The target command could not be dispatched.</red>'
   sudo-nested: '<prefix><red>Nested sudo is not allowed.</red>'
 
+anticheat:
+  connected: '<prefix><green>Connected ADM to <name> (currently <state>).</green>'
+  not-found: '<prefix><red>Supported anti-cheat <name> is not installed.</red>'
+  unsupported: '<prefix><red>That anti-cheat is not supported by ADM.</red>'
+  status: '<prefix><gray>Connected anti-cheat: <name> (<state>).</gray>'
+  not-connected: '<prefix><red>Connect to a supported anti-cheat first with /adm-connect <name>.</red>'
+  already-state: '<prefix><yellow><name> is already <state>.</yellow>'
+  toggled: '<prefix><green><name> is now <state>.</green>'
+  toggle-failed: '<prefix><red>Could not change the state of <name>; check the server log.</red>'
+  grim-required: '<prefix><red>This utility requires GrimAC to be connected.</red>'
+  refreshed: '<prefix><green>Refreshed ADM''s GrimAC permission integration.</green>'
+  exemptions: '<prefix><gray>Online Grim exemptions (<count>): <players>.</gray>'
+
 inventory:
   title: '<type>: <target>'
   opened: '<prefix><green>Opened <target>: <mode>.</green>'
@@ -108,6 +147,7 @@ storage:
 
 punishment:
   duration: '<prefix><red>Invalid duration. Use 30m, 2h, 7d, or 30d.</red>'
+  ip-target-limit: '<prefix><red>This IP has more than <limit> stored players; no punishment was applied.</red>'
   success: '<prefix><green><action> applied to <target>.</green>'
   online-only: '<prefix><red>This action requires an online player.</red>'
   disconnect: '<red><action>: <reason><newline>Expires: <expires></red>'

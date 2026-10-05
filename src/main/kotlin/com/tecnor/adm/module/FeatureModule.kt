@@ -54,8 +54,9 @@ class FeatureModule(
         if (service is Listener) plugin.server.pluginManager.registerEvents(service, plugin)
         plugin.lifecycleManager.registerEventHandler(LifecycleEvents.COMMANDS) { event ->
             if (!registered && state == ModuleStatus.ENABLED) {
-                try {
-                    for (spec in service.commands) {
+                var allRegistered = true
+                for (spec in service.commands) {
+                    try {
                         val root = Commands.literal(spec.name)
                             .requires { it.sender is Player || it.sender is ConsoleCommandSender }
                             .executes { run(CommandActor.from(it.source.sender), spec.name, "") }
@@ -88,11 +89,14 @@ class FeatureModule(
                                 .executes { run(CommandActor.from(it.source.sender), spec.name,
                                     StringArgumentType.getString(it, "arguments")) })
                         event.registrar().register(root.build(), "ADM ${spec.name}", spec.aliases)
+                    } catch (failure: Throwable) {
+                        allRegistered = false
+                        plugin.logger.log(java.util.logging.Level.SEVERE,
+                            "Failed to register ADM command /${spec.name} (aliases: ${spec.aliases.joinToString()}); other commands in module '${service.id}' will remain available.",
+                            failure)
                     }
-                    registered = true
-                } catch (failure: Throwable) {
-                    modules.fail(id(), failure)
                 }
+                registered = allRegistered
             }
         }
     }

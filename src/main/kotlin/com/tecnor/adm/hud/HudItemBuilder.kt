@@ -35,7 +35,7 @@ class HudItemBuilder(private val manager: HudManager) {
         }
         val model = manager.number("buttons.${button.key}.custom-model-data", 0)
         val key = "$material|$name|$lore|$model|${button.head}|$allowed|${button.item?.hashCode()}"
-        templates[key]?.let { return it.clone() }
+        templates[key]?.let { return it }
         val item = (button.item?.clone() ?: ItemStack(material)).also { it.type = material }
         val meta = item.itemMeta ?: return item
         meta.displayName(text(if (allowed) name else manager.text("no-permission.name", "<red>No permission</red>")))

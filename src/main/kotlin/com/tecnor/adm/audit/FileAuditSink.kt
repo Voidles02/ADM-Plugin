@@ -7,6 +7,7 @@ import java.io.BufferedOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
+import java.time.LocalDate
 import java.time.ZoneOffset
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.Executors
@@ -15,18 +16,20 @@ import java.util.logging.Level
 import java.util.logging.Logger
 
 class FileAuditSink(private val directory: Path, private val logger: Logger, snapshot: SettingsSnapshot) : AuditSink {
-    private data class Options(val enabled: Boolean, val maxBytes: Long, val daily: Boolean)
-    private data class Pending(val line: String, val day: String, val settings: Options)
+    private data class Options(val enabled: Boolean, val maxBytes: Long, val daily: Boolean, val retentionDays: Int)
+    private data class Pending(val line: String, val day: String, val settings: Options, val bytes: Int)
     @Volatile private var options = options(snapshot)
     @Volatile private var closed = false
     private val lifecycle = Any()
     private val pending = ArrayBlockingQueue<Pending>(4096)
+    private var pendingBytes = 0L
     private val writer = Executors.newSingleThreadExecutor { task ->
         Thread(task, "ADM-audit").apply { isDaemon = true }
     }
     private var output: BufferedOutputStream? = null
     private var date = ""
     private var size = 0L
+    private var lastPruneDay = ""
 
     init { writer.execute { drain() } }
 
@@ -36,9 +39,16 @@ class FileAuditSink(private val directory: Path, private val logger: Logger, sna
         val settings = options
         if (!settings.enabled) return
         val line = encode(event)
-        val entry = Pending(line, event.timestamp.atZone(ZoneOffset.UTC).toLocalDate().toString(), settings)
-        val accepted = synchronized(lifecycle) { !closed && pending.offer(entry) }
-        if (!accepted) logger.warning("Audit writer full or closed; fallback record: $line")
+        val bytes = line.toByteArray(Charsets.UTF_8).size + 1
+        val entry = Pending(line, event.timestamp.atZone(ZoneOffset.UTC).toLocalDate().toString(), settings, bytes)
+        val accepted = synchronized(lifecycle) {
+            if (closed || pendingBytes + bytes > MAX_PENDING_BYTES || !pending.offer(entry)) false
+            else {
+                pendingBytes += bytes
+                true
+            }
+        }
+        if (!accepted) logger.warning("Audit writer full or closed; record was not queued ($bytes bytes).")
     }
 
     private fun drain() {
@@ -57,6 +67,7 @@ class FileAuditSink(private val directory: Path, private val logger: Logger, sna
                             output?.close()
                             output = null
                             Files.createDirectories(directory)
+                            pruneOldFiles(day, settings.retentionDays)
                             var sequence = 0
                             var path: Path
                             do { path = directory.resolve("audit-$day-${sequence++}.jsonl") } while (Files.exists(path))
@@ -72,9 +83,15 @@ class FileAuditSink(private val directory: Path, private val logger: Logger, sna
                     runCatching { output?.close() }
                     output = null
                     logger.log(Level.SEVERE, "Audit file write failed; batch records follow in the server log.", failure)
-                    batch.forEach { logger.severe("Audit fallback record: ${it.line}") }
+                    batch.forEach {
+                        val line = it.line.take(MAX_LOG_FALLBACK_CHARS)
+                        val suffix = if (it.line.length > line.length) "...(truncated)" else ""
+                        logger.severe("Audit fallback record: $line$suffix")
+                    }
                 } finally {
+                    val drainedBytes = batch.sumOf { it.bytes }.toLong()
                     batch.clear()
+                    synchronized(lifecycle) { pendingBytes = (pendingBytes - drainedBytes).coerceAtLeast(0) }
                 }
             }
         } finally {
@@ -105,8 +122,26 @@ class FileAuditSink(private val directory: Path, private val logger: Logger, sna
     private fun options(snapshot: SettingsSnapshot) = Options(
         snapshot.value("audit.enabled") != false,
         snapshot.integer("audit.max-file-bytes", 10_485_760).toLong(),
-        snapshot.value("audit.rotate-daily") != false
+        snapshot.value("audit.rotate-daily") != false,
+        snapshot.integer("audit.retention-days", 90).coerceIn(1, 36500)
     )
+
+    private fun pruneOldFiles(day: String, retentionDays: Int) {
+        if (lastPruneDay == day) return
+        val cutoff = LocalDate.parse(day).minusDays(retentionDays.toLong())
+        try {
+            Files.list(directory).use { files ->
+                files.forEach { path ->
+                    val match = AUDIT_FILE.matchEntire(path.fileName.toString()) ?: return@forEach
+                    val fileDay = runCatching { LocalDate.parse(match.groupValues[1]) }.getOrNull() ?: return@forEach
+                    if (fileDay.isBefore(cutoff)) Files.deleteIfExists(path)
+                }
+            }
+            lastPruneDay = day
+        } catch (failure: Exception) {
+            logger.log(Level.WARNING, "Could not prune old file audit logs.", failure)
+        }
+    }
 
     private fun encode(event: AuditEvent): String {
         val fields = linkedMapOf("timestamp" to event.timestamp.toString(), "actor" to event.actor.toString(),
@@ -129,5 +164,11 @@ class FileAuditSink(private val directory: Path, private val logger: Logger, sna
             }
         }
         append('"')
+    }
+
+    private companion object {
+        const val MAX_PENDING_BYTES = 8L * 1024 * 1024
+        const val MAX_LOG_FALLBACK_CHARS = 2048
+        val AUDIT_FILE = Regex("audit-(\\d{4}-\\d{2}-\\d{2})-\\d+\\.jsonl")
     }
 }

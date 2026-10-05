@@ -4,6 +4,7 @@ import com.tecnor.adm.api.ActionResult
 import com.tecnor.adm.api.CommandActor
 import com.tecnor.adm.core.PermissionService
 import com.tecnor.adm.core.SchedulerHelper
+import com.tecnor.adm.integration.WorldGuardCompatibility
 import com.tecnor.adm.message.MessageService
 import com.tecnor.adm.module.CommandSpec
 import com.tecnor.adm.module.ModuleManager
@@ -23,7 +24,8 @@ import java.util.concurrent.ConcurrentHashMap
 /** Position caches contain plain immutable data. All world access is main-thread only; chunks load via teleportAsync. */
 class TeleportService(
     plugin: JavaPlugin, modules: ModuleManager, permissions: PermissionService,
-    private val messages: MessageService, private val scheduler: SchedulerHelper
+    private val messages: MessageService, private val scheduler: SchedulerHelper,
+    private val worldGuard: WorldGuardCompatibility? = null
 ) : ServiceSupport(plugin, modules, permissions), Listener {
     override val id = "teleport"
     override val commands = listOf("tp", "tphere", "tpall", "tppos", "back", "top").map { CommandSpec(it) }
@@ -103,6 +105,7 @@ class TeleportService(
     private fun position(location: Location) = Position(location.world!!.uid, location.x, location.y, location.z, location.yaw, location.pitch)
 
     private fun request(actor: CommandActor, command: String, player: Player, destination: Location, notify: Boolean): ActionResult {
+        if (worldGuard?.allowsTeleport(player, destination) == false) return ActionResult.failure("teleport.region-denied")
         val id = player.uniqueId
         val token = UUID.randomUUID()
         if (pending.putIfAbsent(id, token) != null) return ActionResult.failure("teleport.busy")

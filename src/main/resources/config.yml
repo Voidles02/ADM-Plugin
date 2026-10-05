@@ -2,8 +2,10 @@ modules:
   core: true
   player-tools: true
   teleport: true
+  tpa: true
   information: true
   chat: true
+  anticheat: true
   inventory: true
   vanish: true
   punishments: true
@@ -18,6 +20,10 @@ commands:
     - advancedadminmanagement
 
 login-fallback: allow
+
+tpa:
+  cooldown-seconds: 5
+  protection-seconds: 15
 
 cooldowns:
   reload: 0

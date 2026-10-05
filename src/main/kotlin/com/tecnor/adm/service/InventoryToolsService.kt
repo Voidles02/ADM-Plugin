@@ -35,7 +35,8 @@ import org.bukkit.plugin.ServicePriority
 import org.bukkit.plugin.java.JavaPlugin
 import org.bukkit.scheduler.BukkitTask
 import java.time.Instant
-import java.util.Base64
+import java.util.HexFormat
+import java.security.MessageDigest
 import java.util.UUID
 
 class InventoryToolsService(
@@ -73,9 +74,18 @@ class InventoryToolsService(
             sessions.values.filter { it.provider === provider }.toList().forEach { close(it) }
         }
         plugin.server.servicesManager.register(EnderChestProviderRegistry::class.java, providers, plugin, ServicePriority.Normal)
-        refreshTask = plugin.server.scheduler.runTaskTimer(plugin, Runnable {
-            sessions.values.forEach { it.invsee?.refresh() }
-        }, 1L, 1L)
+    }
+
+    private fun syncInvseeRefreshTask() {
+        val hasViews = sessions.values.any { it.invsee != null }
+        if (hasViews && refreshTask == null) {
+            refreshTask = plugin.server.scheduler.runTaskTimer(plugin, Runnable {
+                sessions.values.forEach { it.invsee?.refresh() }
+            }, 10L, 10L)
+        } else if (!hasViews) {
+            refreshTask?.cancel()
+            refreshTask = null
+        }
     }
 
     override fun disable() {
@@ -159,6 +169,7 @@ class InventoryToolsService(
         staff.closeInventory()
         val session = Session(staff, target.uniqueId, target.name, view.inventory, editable, null, null, view)
         sessions[staff.uniqueId] = session
+        syncInvseeRefreshTask()
         staff.openInventory(view.inventory)
         if (staff.openInventory.topInventory != view.inventory) {
             close(session)
@@ -193,6 +204,7 @@ class InventoryToolsService(
 
     private fun release(session: Session) {
         if (sessions.remove(session.staff.uniqueId) !== session) return
+        syncInvseeRefreshTask()
         try {
             if (session.provider != null) recordChanges(session)
             session.lease?.flush()
@@ -290,7 +302,8 @@ class InventoryToolsService(
     private fun contents(session: Session): List<String> {
         val source = session.invsee?.target?.inventory ?: session.inventory
         return source.contents.map { item ->
-            if (item == null || item.type.isAir) "empty" else "${item.type}:${item.amount}:${Base64.getEncoder().encodeToString(item.serializeAsBytes())}"
+            if (item == null || item.type.isAir) "empty" else
+                "${item.type}:${item.amount}:sha256:${HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(item.serializeAsBytes()))}"
         }
     }
 

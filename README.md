@@ -1,14 +1,14 @@
 # ADM — Advanced Admin Management
 
 Author: **voidles02**  
-Version: **0.9.0-stage10**  
-Stage: **10 — Grim Anticheat compatibility**
+Version: **0.10.0-stage12**  
+Stage: **12 — TPA, integrations and stability updates**
 
 ## Installation
 
-Use Paper 1.21.x and Java 21. The Gradle Kotlin DSL project compiles against Paper 1.21.4; Paper and LuckPerms APIs are compile-only. Java and Kotlin code target Java 21. Kotlin stdlib and embedded H2 are declared in the root `manifest.kod`; H2 2.3.232 is an implementation dependency. GrimAC is an optional server dependency loaded before ADM; ADM uses Bukkit permissions and does not link against Grim classes. No libraries are shaded. This is not a Spigot or Folia plugin.
+Use Paper 1.21.x and Java 21. The Gradle Kotlin DSL project compiles against Paper 1.21.4; Paper, LuckPerms, and WorldGuard APIs are compile-only. Java and Kotlin code target Java 21. Kotlin stdlib and embedded H2 are declared in the root `manifest.kod`; H2 2.3.232 is an implementation dependency. GrimAC is an optional server dependency loaded before ADM; ADM uses Bukkit permissions and does not link against Grim classes. No libraries are shaded. This is not a Spigot or Folia plugin.
 
-Put the built ADM jar in `plugins/` and restart the server. LuckPerms and GrimAC are optional and load before ADM when installed. First startup creates `plugins/ADM/config.yml`, `messages.yml`, and `hud.yml`. Existing files are preserved: absent settings use defaults, and absent messages fall back with a once-per-key warning. Add the new entries from the bundled configuration to customize them.
+Put the built ADM jar in `plugins/` and restart the server. LuckPerms, GrimAC, WorldEdit, and WorldGuard are optional; WorldGuard integration is initialized when installed, with its WorldEdit dependency loaded first. First startup creates `plugins/ADM/config.yml`, `messages.yml`, and `hud.yml`. Existing files are preserved: absent settings use defaults, and absent messages fall back with a once-per-key warning. Add the new entries from the bundled configuration to customize them.
 
 When LuckPerms is enabled, ADM creates or updates the `moderator`, `admin`, and `owner` groups. It never assigns players to these groups automatically; use LuckPerms commands to promote staff explicitly. The groups inherit permissions in order: `owner` inherits `admin`, and `admin` inherits `moderator`.
 
@@ -19,8 +19,10 @@ When LuckPerms is enabled, ADM creates or updates the `moderator`, `admin`, and 
 | `modules.core` | `/adm reload`, `/adm version`, `/adm debug`, `/adm storage-info`, `/adm database`, `/adm log`, `/adm cleanup` |
 | `modules.player-tools` | Game modes, flight, speed, god, heal, feed, repair, clear |
 | `modules.teleport` | Player/coordinate teleports, back, safe top |
+| `modules.tpa` | TPA requests, accept/deny, configurable request cooldown and post-teleport damage protection |
 | `modules.information` | Near, ping, online list, whois, seen |
 | `modules.chat` | Title announcements, broadcast, clear/mute chat, slowmode, sudo |
+| `modules.anticheat` | Connect to supported anticheats, check status, toggle the connected plugin, and manage Grim exemptions |
 | `modules.inventory` | Ender Chest providers, locked ender editing, invsee |
 | `modules.vanish` | `/vanish on|off|set LVL|help`, level-based visibility, silent joins/quits, pickup and mob-target protection |
 | `modules.punishments` | Persistent bans, IP bans, mutes, warnings, kicks, history, alts |
@@ -35,7 +37,7 @@ A disabled module registers neither its commands nor its feature listeners. Core
 
 ## Commands and permissions
 
-Command nodes default to op-only. `vanish.on-join` defaults to true in the shipped configuration, but joining players still need the vanish permissions, including `adm.admin.vanish.join`. Vanish levels 0, 2, and 3 default to false; level 1 defaults to op. A base permission is always required; targeting someone else additionally requires the `.others` node when listed. Fixed-mode shortcuts share the game-mode permissions and cooldown.
+Staff command nodes default to op-only; TPA request commands default to available to all players. `vanish.on-join` defaults to true in the shipped configuration, but joining players still need the vanish permissions, including `adm.admin.vanish.join`. Vanish levels 0, 2, and 3 default to false; level 1 defaults to op. A base permission is always required; targeting someone else additionally requires the `.others` node when listed. Fixed-mode shortcuts share the game-mode permissions and cooldown.
 
 | Command | Base permission | Additional permission |
 | --- | --- | --- |
@@ -58,11 +60,16 @@ Command nodes default to op-only. `vanish.on-join` defaults to true in the shipp
 | `/tppos <x> <y> <z> [world]` | `adm.admin.tppos` | — |
 | `/back` | `adm.mod.back` | — |
 | `/top` | `adm.mod.top` | — |
+| `/tpa <player>` (`/admtpa`) | `adm.tpa.use` | Sends a request; default 5-second per-player cooldown |
+| `/tpaccept [player]` (`/admtpaccept`), `/tpdeny [player]` (`/admtpdeny`) | `adm.tpa.use` | Requests expire after 60 seconds |
+| `/tpa cooldown set <time>`, `/tpa protection <time>` | `adm.admin.tpa.configure` | Saves immediately; `/tpa protection set <time>` also works. Accepts seconds (`5`/`5s`), minutes (`2m`), or hours (`1h`), from 0 to 86400 seconds |
 | `/near [radius]` | `adm.mod.near` | — |
 | `/ping [player]` | `adm.mod.ping` | — |
 | `/list` | `adm.mod.list` | — |
 | `/broadcast <message>` | `adm.admin.broadcast` | — |
 | `/announcement <message>`, `/annoucement` | `adm.admin.announcement` | Shows a title and chat announcement to online players |
+| `/adm-connect <anticheat>` | `adm.admin.anticheat.manage` | Connect ADM to GrimAC, Vulcan, Matrix, Spartan, NoCheatPlus, Themis, or AntiCheatReloaded |
+| `/adm:anticheat <status\|on\|off\|refresh\|exemptions>` | `adm.admin.anticheat.manage` | Check or toggle the connected supported plugin; Grim-only refresh and exemption listing |
 | `/clearchat` | `adm.mod.clearchat` | — |
 | `/mutechat` | `adm.mod.mutechat` | — |
 | `/slowmode <seconds\|off>` | `adm.mod.slowmode` | — |
@@ -85,7 +92,7 @@ Command nodes default to op-only. `vanish.on-join` defaults to true in the shipp
 | `/kick <player> [reason]` | `adm.mod.kick` | Online only; hierarchy |
 | `/ban <player> [reason]` | `adm.admin.ban` | Hierarchy |
 | `/tempban <player> <duration> [reason]` | `adm.admin.tempban` | Hierarchy |
-| `/ipban <player\|ip> [reason]` | `adm.admin.ipban` | Hierarchy for known accounts sharing the IP |
+| `/ipban <player\|ip> [reason]` | `adm.admin.ipban` | Hierarchy for known accounts sharing the IP; rejects requests matching more than 5000 stored accounts |
 | `/unban <player\|ip>` | `adm.admin.unban` | Name removes UUID ban and associated IP ban; literal IP removes IP bans |
 | `/history <player> [page]` | `adm.admin.history` | Hierarchy |
 | `/alts <player> [page]` | `adm.admin.alts` | Accounts with the same last stored IP; hierarchy |
@@ -106,7 +113,7 @@ Command nodes default to op-only. `vanish.on-join` defaults to true in the shipp
 | Node | Meaning |
 | --- | --- |
 | `adm.mod.*` | All implemented moderator command nodes and `.others` variants |
-| `adm.admin.*` | Admin command nodes, IP/edit/see permissions, level 1, plus `adm.mod.*`; silent join remains opt-in |
+| `adm.admin.*` | Admin command nodes including anticheat controls, IP/edit/see permissions, level 1, plus `adm.mod.*`; silent join remains opt-in |
 | `adm.*` | All implemented command permissions, bypasses, tiers, and immunity |
 | `adm.tier.mod` | Fallback hierarchy rank 1 |
 | `adm.tier.admin` | Fallback hierarchy rank 2 |
@@ -126,6 +133,8 @@ The isolated LuckPerms integration caches plain prefix, suffix, and primary-grou
 
 When GrimAC is installed, ADM provides an opt-in permission bridge: players with `adm.grim.exempt` receive Grim's `grim.exempt` permission while GrimAC is enabled. The node defaults to false and is deliberately not included in `adm.admin.*` or the automatically created LuckPerms roles. Grant it only to staff who should bypass Grim checks, for example with `lp group moderator permission set adm.grim.exempt true`. Changes are synchronized within two seconds; attachments are removed when a player leaves, GrimAC is disabled, or ADM shuts down. Without the opt-in node, ADM does not exempt players or alter Grim checks.
 
+`/adm-connect GrimAC` connects ADM to an installed supported anticheat (also supported: Vulcan, Matrix, Spartan, NoCheatPlus, Themis, and AntiCheatReloaded). `/adm:anticheat status` shows the selected plugin; `on` and `off` enable or disable that plugin live through Bukkit's plugin manager. `refresh` and `exemptions` apply only to GrimAC. These controls require `adm.admin.anticheat.manage`; the automatically created LuckPerms admin and owner groups receive it through `adm.admin.*`. ADM does not issue vendor-specific alert or punishment commands to other anticheats.
+
 ### Default LuckPerms roles
 
 ADM assigns weights 10, 50, and 100 to the default Moderator, Admin, and Owner groups. Group names are lowercase in LuckPerms. Permissions from each parent group are inherited.
@@ -133,7 +142,7 @@ ADM assigns weights 10, 50, and 100 to the default Moderator, Admin, and Owner g
 | Group | Weight | Permissions and abilities |
 | --- | ---: | --- |
 | `moderator` | 10 | `adm.mod.*`, vanish level 1, moderation/report/vanish HUD pages, and common moderation vanilla commands (kick, teleport, gamemode, effect, clear) |
-| `admin` | 50 | Inherits Moderator; adds `adm.admin.*`, vanish level 2, all HUD pages, and common world-management vanilla commands |
+| `admin` | 50 | Inherits Moderator; adds `adm.admin.*` including anticheat controls, vanish level 2, all HUD pages, and common world-management vanilla commands |
 | `owner` | 100 | Inherits Admin; adds `adm.*`, hierarchy bypass/immunity, vanish level 3, and `minecraft.command.*` plus `bukkit.command.*` for vanilla/Bukkit commands |
 
 Owner's command wildcards do not grant `*` across unrelated LuckPerms plugins. Group setup does not grant operator status. Assign players explicitly with LuckPerms (console examples):
@@ -151,11 +160,11 @@ Do not grant `adm.*` or `adm.bypass.hierarchy` to the hierarchy test accounts: t
 
 ## Configuration and reload
 
-`cooldowns.<command>` is an integer number of seconds, 0–86400; missing entries and 0 disable the cooldown. Cooldowns apply per actor and canonical command. `/gm` and the fixed shortcuts use `cooldowns.gamemode`. Accepted actions start cooldowns; ordinary permission/input denials do not. Teleport requests start cooldowns when accepted even if the eventual teleport is cancelled. Console has no cooldown.
+`cooldowns.<command>` is an integer number of seconds, 0–86400; missing entries and 0 disable the cooldown. Cooldowns apply per actor and canonical command. `/gm` and the fixed shortcuts use `cooldowns.gamemode`. Accepted actions start cooldowns; ordinary permission/input denials do not. Teleport requests start cooldowns when accepted even if the eventual teleport is cancelled. Console has no cooldown. TPA has its own `tpa.cooldown-seconds` (default 5) and `tpa.protection-seconds` (default 15); 0 disables either duration. Authorized staff can change them with `/tpa cooldown set <time>` and `/tpa protection <time>`; changes save to `config.yml` and take effect immediately.
 
 `slowmode.min-seconds` and `.max-seconds` bound accepted intervals (defaults 1–300, maximum 86400). `near.default-radius` and `.max-radius` default to 100 and 1000 (maximum 10000). `clearchat.lines` defaults to 100 (range 1–500). Minimum/default values cannot exceed their respective maximums. `login-fallback: allow|deny` determines whether storage errors/timeouts allow or reject login. It never overrides an existing rejection by another plugin.
 
-`/adm reload` reads and validates both YAML files on ADM's executor. Invalid YAML, types, ranges, aliases, or MiniMessage syntax leave the old immutable snapshot active. A valid snapshot is swapped atomically on the main thread, then each enabled module receives `onReload(snapshot)`. Messages, cooldowns, and limits apply immediately; an active slowmode interval is clamped to updated limits. Cached chat denial components are rebuilt. Inventory views close and edit leases flush and release. File audit settings update without replacing its writer; vanish visibility is refreshed. Module toggles and the root command name/aliases are compared with startup and produce one **restart required** notice per changed setting; registered commands and enabled modules do not change on reload.
+`/adm reload` reads and validates both YAML files on ADM's executor. Invalid YAML, types, ranges, aliases, or MiniMessage syntax leave the old immutable snapshot active. A valid snapshot is swapped atomically on the main thread, then each enabled module receives `onReload(snapshot)`. Messages, cooldowns, TPA durations, and limits apply immediately; an active slowmode interval is clamped to updated limits. Cached chat denial components are rebuilt. Inventory views close and edit leases flush and release. File audit settings update without replacing its writer; vanish visibility is refreshed. Module toggles and the root command name/aliases are compared with startup and produce one **restart required** notice per changed setting; registered commands and enabled modules do not change on reload.
 
 All ADM messages use configurable MiniMessage templates in `messages.yml`. Missing keys fall back to built-in defaults and warn once per key. Values supplied by players, including broadcast text, are inserted as literal text, not parsed MiniMessage. Startup validation failure is logged and runs built-in defaults without overwriting the broken files.
 
@@ -167,7 +176,7 @@ All ADM messages use configurable MiniMessage templates in `messages.yml`. Missi
 - `/back` captures the origin of successful ADM teleports and the death location. Returning with `/back` records its own origin, allowing another return. Locations contain only world UUID and numeric coordinates. Ordinary non-ADM teleports do not update them.
 - Teleports use Paper `teleportAsync` so unloaded destination chunks are not synchronously loaded by ADM. Results return through the Bukkit scheduler. Pending request tokens are removed on quit/disable, so late results cannot recreate cleared state. `/tpall` reports requests, not guaranteed successful arrivals.
 - `/top` searches the current loaded column for the highest solid non-hazardous support with two passable, non-liquid blocks above it. It refuses when no safe surface exists. Coordinate teleport accepts finite absolute coordinates inside height/world-border limits, not relative coordinates.
-- Global mute and slowmode are in-memory and survive ADM reload, but reset on plugin shutdown/restart. Per-player god, return locations, cooldowns, slowmode timestamps, and vanish state are removed on quit. Expired report-submission cooldowns are pruned on the next report; report cooldowns and temporary staff-recovery byte snapshots are cleared on module shutdown, while durable recovery snapshots remain in embedded storage. Inventory projections refresh every tick; vanish permission visibility refreshes every second.
+- Global mute and slowmode are in-memory and survive ADM reload, but reset on plugin shutdown/restart. Per-player god, return locations, cooldowns, slowmode timestamps, and vanish state are removed on quit. Expired report-submission cooldowns are pruned on the next report; report cooldowns and temporary staff-recovery byte snapshots are cleared on module shutdown, while durable recovery snapshots remain in embedded storage. Inventory projections refresh every two ticks only while an invsee session is open; vanish permission visibility refreshes every second.
 - Chat enforcement uses Paper's synchronous `ChatEvent`, intentionally scheduling normal chat handling on the server thread. Early returns, preallocated timestamps, and cached denial components avoid ADM allocations during normal hot-path chat checks. Bypass permissions are checked live.
 - All gameplay/permission/hierarchy access is main-thread confined. Reload workers handle only immutable plain data and local YAML parsers. LuckPerms event callbacks copy UUIDs and schedule cache refresh on the main thread. Async teleport completion schedules all live player/world access back to the main thread.
 - ConcurrentHashMap-backed player caches are documented in their owning services; mutable gameplay state remains main-thread confined. ConfigService's atomic snapshot and message warning sets are safe for cross-thread reads. Service methods own module/permission/hierarchy/cooldown/audit rules, not the command adapter.
@@ -177,6 +186,8 @@ All ADM messages use configurable MiniMessage templates in `messages.yml`. Missi
 ## Known limitations
 
 Vanilla offline Ender Chest access and offline invsee remain unavailable. No network offline name lookup is performed. Failed startup modules need a restart. Existing YAML files are not automatically rewritten during an upgrade. Coordinate teleports do not promise safe terrain; `/top` is the safe-surface tool. Other plugins can cancel teleports or chat. If a snapshot's world is unavailable or restoration fails, ADM keeps the snapshot and refuses to discard it. Name/IP associations and offline hierarchy reflect recorded data, not a live identity-provider lookup. Social spy recognizes configured private-message command labels rather than third-party plugin-specific events.
+
+When WorldGuard is installed, ADM checks its `exit-via-teleport` and `entry` region flags for `/tp`, `/tphere`, `/tpall`, `/tppos`, `/back`, `/top`, and TPA requests. WorldGuard bypass permissions are honored. Paper teleport-event cancellations remain authoritative. ADM does not yet link directly to BetterEnderChest, CoreProtect, AuthMe Reloaded, Quizy, or CombatLog APIs; its Ender Chest provider registry and AuditSink are available as extension points. Plugin-specific adapters require the target plugin's API contract and version.
 
 ## Inventory HUD
 
@@ -246,9 +257,9 @@ Custom screens appear on Home. Navigation and protection are automatic; callback
 
 ## File audit and sink API
 
-`audit.enabled` defaults true. `audit.max-file-bytes` defaults 10485760 (10 MiB; accepted range 1024–2147483647). `audit.rotate-daily` defaults true. One dedicated async writer writes UTF-8 JSONL to `plugins/ADM/audit/audit-YYYY-MM-DD-N.jsonl`, rotating by UTC date or size. A single oversized record is kept intact. Existing files are never overwritten and a new file is started after restart. A valid reload updates options after closing current inventory views. Queued records retain the options at submission; writer shutdown drains rather than discards them. File failures report the full record to the server log as a fallback.
+`audit.enabled` defaults true. `audit.max-file-bytes` defaults 10485760 (10 MiB; accepted range 1024–2147483647). `audit.rotate-daily` defaults true. One dedicated async writer writes UTF-8 JSONL to `plugins/ADM/audit/audit-YYYY-MM-DD-N.jsonl`, rotating by UTC date or size. Its queue is bounded by both 4096 records and 8 MiB; records rejected at the limit are reported in the server log. Files older than `audit.retention-days` are pruned on the first file rotation of each UTC day. Existing active files are never overwritten and a new file is started after restart. A valid reload updates options after closing current inventory views. Queued records retain the options at submission; writer shutdown drains rather than discards them. File failures report truncated record previews to the server log as a fallback.
 
-Access records include actor/target UUID and name, inventory type, read/edit mode and provider ID. Edit records include changed slot numbers, before/after material and amount, and Base64 Paper item serialization (including metadata). Gameplay objects are serialized on the main thread; only immutable strings/UUIDs/instants reach the writer. Restrict access to the audit directory like other administrative logs.
+Access records include actor/target UUID and name, inventory type, read/edit mode and provider ID. Edit records include changed slot numbers, before/after material and amount, plus SHA-256 fingerprints of Paper item serialization; item contents and metadata are not written into audit details. Gameplay objects are serialized on the main thread; only immutable strings/UUIDs/instants reach the writer. Restrict access to the audit directory like other administrative logs.
 
 `com.tecnor.adm.api.AuditSink` is registered with Bukkit's `ServicesManager`. Inventory and moderation operations use the highest-priority registered sink. ADM now owns a database-backed default sink independent of the inventory toggle; third-party sinks can replace it at a higher service priority. `audit.file-secondary: true` writes every record to the existing JSONL sink as well. Database audit failure falls back to the file sink even when secondary logging is false. Database rows record staff, target, action, details, timestamp, and source `COMMAND`.
 

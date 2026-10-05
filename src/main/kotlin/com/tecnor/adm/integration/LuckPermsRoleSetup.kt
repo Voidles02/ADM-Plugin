@@ -50,6 +50,7 @@ class LuckPermsRoleSetup(
         permissions = listOf(
             "adm.tier.admin",
             "adm.admin.*",
+            "adm.admin.anticheat.*",
             "adm.hud.*",
             "adm.vanish.level.2",
             "minecraft.command.give",
@@ -109,10 +110,33 @@ class LuckPermsRoleSetup(
                 groups.createAndLoadGroup(role.name)
             }
             groupFuture.thenCompose { group ->
-                role.permissions.forEach { group.data().add(Node.builder(it).build()) }
-                group.data().add(WeightNode.builder(role.weight).build())
-                role.parent?.let { group.data().add(InheritanceNode.builder(it).build()) }
-                groups.saveGroup(group)
+                val data = group.data()
+                var changed = false
+
+                role.permissions.forEach { permission ->
+                    data.toCollection()
+                        .filter { it.key == permission && !it.value && it.contexts.isEmpty() && !it.hasExpiry() }
+                        .forEach {
+                            data.remove(it)
+                            changed = true
+                        }
+                    if (data.add(Node.builder(permission).build()).wasSuccessful()) changed = true
+                }
+
+                data.toCollection()
+                    .filterIsInstance<WeightNode>()
+                    .filter { it.weight != role.weight && it.contexts.isEmpty() && !it.hasExpiry() }
+                    .forEach {
+                        data.remove(it)
+                        changed = true
+                    }
+                if (data.add(WeightNode.builder(role.weight).build()).wasSuccessful()) changed = true
+
+                role.parent?.let {
+                    if (data.add(InheritanceNode.builder(it).build()).wasSuccessful()) changed = true
+                }
+
+                if (changed) groups.saveGroup(group) else CompletableFuture.completedFuture<Void>(null)
             }
         }
     }

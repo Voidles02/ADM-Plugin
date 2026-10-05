@@ -35,12 +35,18 @@ class VanishService(
     private val vanished = mutableMapOf<UUID, State>()
     private var refreshTask: BukkitTask? = null
 
-    override fun enable() {
-        refreshTask = plugin.server.scheduler.runTaskTimer(plugin, Runnable { refresh() }, 20L, 20L)
+    private fun syncRefreshTask() {
+        if (vanished.isNotEmpty() && refreshTask == null) {
+            refreshTask = plugin.server.scheduler.runTaskTimer(plugin, Runnable { refresh() }, 20L, 20L)
+        } else if (vanished.isEmpty()) {
+            refreshTask?.cancel()
+            refreshTask = null
+        }
     }
 
     override fun disable() {
         refreshTask?.cancel()
+        refreshTask = null
         for ((uuid, state) in vanished) {
             val target = Bukkit.getPlayer(uuid) ?: continue
             target.canPickupItems = state.pickup
@@ -93,6 +99,7 @@ class VanishService(
         val state = vanished.remove(player.uniqueId) ?: return done(actor, "vanish", "vanish.disabled")
         player.canPickupItems = state.pickup
         Bukkit.getOnlinePlayers().forEach { it.showPlayer(plugin, player) }
+        syncRefreshTask()
         if (config.current().value("vanish.fake-join") == true) fake(player, "vanish.fake-join")
         return done(actor, "vanish", "vanish.disabled")
     }
@@ -109,6 +116,7 @@ class VanishService(
             if (it is Mob && it.target?.uniqueId == player.uniqueId) it.target = null
         }
         refresh()
+        syncRefreshTask()
     }
 
     fun staffLevel(player: Player): Int? = vanished[player.uniqueId]?.level
@@ -119,6 +127,7 @@ class VanishService(
         if (previous != null) activate(player, previous) else {
             vanished.remove(player.uniqueId)?.let { player.canPickupItems = it.pickup }
             Bukkit.getOnlinePlayers().forEach { it.showPlayer(plugin, player) }
+            syncRefreshTask()
         }
     }
 
@@ -161,6 +170,7 @@ class VanishService(
         val state = vanished.remove(event.player.uniqueId) ?: return
         event.quitMessage(null)
         event.player.canPickupItems = state.pickup
+        syncRefreshTask()
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)

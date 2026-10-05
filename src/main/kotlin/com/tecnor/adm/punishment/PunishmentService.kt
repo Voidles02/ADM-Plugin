@@ -100,22 +100,35 @@ class PunishmentService(plugin: JavaPlugin, modules: ModuleManager, permissions:
         }.take(2000)
         val ip = if (command in listOf("ipban", "unban")) literalIp(args[0]) else null
         val future = if (ip == null) storage.resolve(args[0]).thenCompose { target -> storage.submit { db ->
-            if (target == null) emptyList() else if (command in listOf("ipban", "unban"))
-                listOf(target) + db.query("SELECT * FROM players WHERE ip=? AND uuid<>?", target.ip, target.id.toString()) { it.storedPlayer() }
-            else listOf(target)
+            TargetLookup(if (target == null) emptyList() else if (command in listOf("ipban", "unban"))
+                listOf(target) + db.query("SELECT * FROM players WHERE ip=? AND uuid<>? LIMIT ?", target.ip, target.id.toString(), MAX_IP_TARGETS + 1) { it.storedPlayer() }
+            else listOf(target))
         } }
-            else storage.submit { db -> db.query("SELECT * FROM players WHERE ip=?", ip) { it.storedPlayer() } }
-        future.whenComplete { targets, error -> scheduler.main(Runnable {
+            else storage.submit { db ->
+                val count = db.query("SELECT COUNT(*) FROM players WHERE ip=?", ip) { it.getInt(1) }.first()
+                if (count > MAX_IP_TARGETS) TargetLookup(emptyList(), true)
+                else TargetLookup(db.query("SELECT * FROM players WHERE ip=? LIMIT ?", ip, MAX_IP_TARGETS + 1) { it.storedPlayer() })
+            }
+        future.whenComplete { lookup, error -> scheduler.main(Runnable {
             if (!modules.isEnabled(id)) return@Runnable
             if (error != null) {
                 messages.send(actor, ActionResult.failure("storage.unavailable"))
                 return@Runnable
             }
+            if (lookup.tooMany) {
+                messages.send(actor, ActionResult.failure("punishment.ip-target-limit", mapOf("limit" to MAX_IP_TARGETS.toString())))
+                return@Runnable
+            }
+            val targets = lookup.players
             if (ip == null && targets.isEmpty()) {
                 messages.send(actor, ActionResult.failure("command.player-not-found", mapOf("target" to args[0])))
                 return@Runnable
             }
             val allTargets = targets.toMutableList()
+            if (command in listOf("ipban", "unban") && allTargets.size > MAX_IP_TARGETS) {
+                messages.send(actor, ActionResult.failure("punishment.ip-target-limit", mapOf("limit" to MAX_IP_TARGETS.toString())))
+                return@Runnable
+            }
             val affectedIp = ip ?: targets.firstOrNull()?.ip?.takeIf { command in listOf("ipban", "unban") }
             if (affectedIp != null) {
                 Bukkit.getOnlinePlayers().filter { it.address?.address?.hostAddress == affectedIp && targets.none { target -> target.id == it.uniqueId } }
@@ -223,5 +236,11 @@ class PunishmentService(plugin: JavaPlugin, modules: ModuleManager, permissions:
     private fun literalIp(input: String): String? {
         if (!input.matches(Regex("[0-9]{1,3}(\\.[0-9]{1,3}){3}")) && !(input.contains(':') && input.matches(Regex("[0-9a-fA-F:.]+")))) return null
         return runCatching { InetAddress.getByName(input).hostAddress }.getOrNull()
+    }
+
+    private data class TargetLookup(val players: List<StoredPlayer>, val tooMany: Boolean = false)
+
+    private companion object {
+        const val MAX_IP_TARGETS = 5000
     }
 }

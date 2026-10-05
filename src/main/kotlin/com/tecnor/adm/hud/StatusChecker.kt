@@ -41,8 +41,12 @@ class StatusChecker(private val manager: HudManager) : AutoCloseable {
         }
         val pending = manager.storage.pendingByModule()
         val registeredListeners = org.bukkit.event.HandlerList.getRegisteredListeners(manager.plugin)
+        val features = manager.modules.features().associateBy { it.id() }
+        val errorsByModule = manager.modules.errors().groupBy { it.module() }
+        val lp = manager.plugin.luckPermsHooked()
+        val providers = manager.providers.providers()
         cached = manager.modules.statuses().mapValues { (module, status) ->
-            val feature = manager.modules.features().firstOrNull { it.id() == module }
+            val feature = features[module]
             val configured = module == "hud" || manager.plugin.settings().current().modules().getOrDefault(module, true)
             val registered = if (module == "core") Bukkit.getCommandMap().getCommand(manager.plugin.settings().startup().commands().name()) != null else
                 feature?.commandsRegistered() == true || feature?.service?.commands?.isEmpty() == true
@@ -52,8 +56,6 @@ class StatusChecker(private val manager: HudManager) : AutoCloseable {
                 "punishments" -> registeredListeners.any { it.listener.javaClass.name == "com.tecnor.adm.punishment.PunishmentEnforcement" }
                 else -> !needsListener || registeredListeners.any { it.listener === feature?.service }
             }
-            val lp = manager.plugin.luckPermsHooked()
-            val providers = manager.providers.providers()
             var color = when {
                 !configured || status != ModuleStatus.ENABLED || !registered || !listeners -> "red"
                 module in storageModules && health.state == "FAILED" -> "red"
@@ -62,7 +64,7 @@ class StatusChecker(private val manager: HudManager) : AutoCloseable {
                 module == "inventory" && providers.isEmpty() -> "red"
                 else -> "green"
             }
-            val errors = manager.modules.errors().filter { it.module() == module }.takeLast(3)
+            val errors = errorsByModule[module].orEmpty().takeLast(3)
             if (status == ModuleStatus.FAILED) color = "red"
             val servicePending = when (val service = feature?.service) {
                 is com.tecnor.adm.service.TeleportService -> service.pendingCount()

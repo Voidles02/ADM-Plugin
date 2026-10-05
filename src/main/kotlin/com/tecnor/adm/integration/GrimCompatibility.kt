@@ -18,7 +18,7 @@ class GrimCompatibility(private val plugin: JavaPlugin) : Listener, AutoCloseabl
 
     fun enable() {
         if (grimEnabled()) {
-            refreshPlayers()
+            refreshOnlinePlayers()
             startRefreshTask()
         }
     }
@@ -36,7 +36,7 @@ class GrimCompatibility(private val plugin: JavaPlugin) : Listener, AutoCloseabl
     @EventHandler
     fun pluginEnable(event: PluginEnableEvent) {
         if (!event.plugin.name.equals("GrimAC", ignoreCase = true)) return
-        refreshPlayers()
+        refreshOnlinePlayers()
         startRefreshTask()
     }
 
@@ -50,13 +50,13 @@ class GrimCompatibility(private val plugin: JavaPlugin) : Listener, AutoCloseabl
 
     private fun startRefreshTask() {
         if (refreshTask == null) {
-            refreshTask = plugin.server.scheduler.runTaskTimer(plugin, Runnable(::refreshPlayers), 20L, 40L)
+            refreshTask = plugin.server.scheduler.runTaskTimer(plugin, Runnable(::refreshOnlinePlayers), 20L, 40L)
         }
     }
 
     private fun grimEnabled() = plugin.server.pluginManager.getPlugin("GrimAC")?.isEnabled == true
 
-    private fun refreshPlayers() {
+    fun refreshOnlinePlayers() {
         plugin.server.onlinePlayers.forEach(::refresh)
     }
 

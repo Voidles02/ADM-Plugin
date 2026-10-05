@@ -1,7 +1,7 @@
 name: ADM
 version: '${version}'
 main: com.tecnor.adm.ADMPlugin
-description: Advanced Admin Management - Stage 10 Grim Anticheat compatibility
+description: Advanced Admin Management - Stage 12 TPA, integrations and stability updates
 api-version: '1.21'
 authors: [voidles02]
 
@@ -15,6 +15,14 @@ dependencies:
       load: BEFORE
       required: false
       join-classpath: false
+    WorldEdit:
+      load: BEFORE
+      required: false
+      join-classpath: true
+    WorldGuard:
+      load: BEFORE
+      required: false
+      join-classpath: true
 
 permissions:
   adm.*:
@@ -44,6 +52,7 @@ permissions:
       adm.admin.tpall: true
       adm.admin.tppos: true
       adm.admin.announcement: true
+      adm.admin.anticheat.manage: true
       adm.admin.broadcast: true
       adm.admin.sudo: true
       adm.admin.reload: true
@@ -71,6 +80,7 @@ permissions:
       adm.admin.spy.social: true
       adm.admin.log: true
       adm.admin.cleanup: true
+      adm.admin.tpa.configure: true
   adm.mod.*:
     description: Moderator tools
     default: op
@@ -177,6 +187,9 @@ permissions:
     default: op
   adm.admin.announcement:
     description: Send a title announcement to all players
+    default: op
+  adm.admin.anticheat.manage:
+    description: Connect to and control supported anti-cheat plugins
     default: op
   adm.admin.sudo:
     default: op
@@ -287,6 +300,12 @@ permissions:
     default: op
   adm.admin.cleanup:
     default: op
+  adm.admin.tpa.configure:
+    description: Configure TPA cooldown and protection durations
+    default: op
+  adm.tpa.use:
+    description: Send and respond to TPA requests
+    default: true
   adm.grim.exempt:
     description: Exempt from Grim AntiCheat when GrimAC is installed
     default: false

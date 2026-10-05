@@ -4,16 +4,18 @@ plugins {
 }
 
 group = "com.tecnor.adm"
-version = "0.9.0-stage10"
+version = "0.10.0-stage12"
 
 repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
+    maven("https://maven.enginehub.org/repo/")
 }
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
     compileOnly("net.luckperms:api:5.4")
+    compileOnly("com.sk89q.worldguard:worldguard-bukkit:7.0.14")
     implementation(kotlin("stdlib"))
     implementation("com.h2database:h2:2.3.232")
 }
