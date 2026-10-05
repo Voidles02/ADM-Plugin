@@ -24,9 +24,11 @@ import java.util.logging.Level
 class SqliteStorage(private val plugin: JavaPlugin) : Storage {
     @Volatile override var health = StorageHealth("STARTING")
         private set
+    @Volatile private var connectionAvailable = false
     private var connection: Connection? = null
     private var driverLoader: URLClassLoader? = null
     private val pending = ConcurrentHashMap<String, Int>()
+    private val failureLogs = LinkedHashMap<String, Pair<Long, Int>>()
     override val pendingTasks: Int get() = pending.values.sum()
     override fun pendingByModule(): Map<String, Int> = pending.toMap()
 
@@ -35,6 +37,7 @@ class SqliteStorage(private val plugin: JavaPlugin) : Storage {
     private val executor = ThreadPoolExecutor(1, 1, 0, TimeUnit.MILLISECONDS, ArrayBlockingQueue(128),
         { task -> Thread({
             try { task.run() } finally {
+                connectionAvailable = false
                 runCatching { connection?.close() }
                 runCatching { driverLoader?.close() }
             }
@@ -89,13 +92,17 @@ class SqliteStorage(private val plugin: JavaPlugin) : Storage {
                     database.update("DROP TABLE adm_connection_test")
                 }
                 val sqliteVersion = checkNotNull(database.queryFirst("SELECT sqlite_version()") { it.getString(1) })
+                connectionAvailable = true
                 plugin.logger.info("SQLite $sqliteVersion connected at ${directory.resolve("adm.sqlite").toAbsolutePath()}; migrations and read/write self-check passed")
                 success(start)
                 ready.complete(true)
             } catch (failure: Throwable) {
                 failed(failure)
+                connectionAvailable = false
                 runCatching { connection?.close() }
                 connection = null
+                runCatching { driverLoader?.close() }
+                driverLoader = null
                 ready.complete(false)
             } finally {
                 finished("storage")
@@ -139,6 +146,10 @@ class SqliteStorage(private val plugin: JavaPlugin) : Storage {
 
     override fun <T> submit(work: (Connection) -> T): CompletableFuture<T> {
         val future = CompletableFuture<T>()
+        if (ready.isDone && !connectionAvailable) {
+            future.completeExceptionally(IllegalStateException("SQLite storage is unavailable: ${health.lastError.ifBlank { health.state }}"))
+            return future
+        }
         val module = StorageTaskScope.current()
         val source = com.tecnor.adm.api.ActionOrigin.current()
         val task = DatabaseTask(module, source, work, future)
@@ -166,15 +177,21 @@ class SqliteStorage(private val plugin: JavaPlugin) : Storage {
             work = null
             StorageTaskScope.within(module) {
                 com.tecnor.adm.api.ActionOrigin.within(source) {
-                    try {
-                        val db = connection ?: error("SQLite connection unavailable")
-                        val result = operation(db)
-                        success(start)
-                        future.complete(result)
-                    } catch (failure: Throwable) {
-                        failed(failure)
-                        future.completeExceptionally(failure)
-                    } finally { finished(module) }
+                    if (connectionAvailable) {
+                        try {
+                            val db = connection ?: error("SQLite connection unavailable")
+                            val result = operation(db)
+                            success(start)
+                            future.complete(result)
+                        } catch (failure: Throwable) {
+                            failed(failure)
+                            if (runCatching { connection?.isClosed != false }.getOrDefault(true)) connectionAvailable = false
+                            future.completeExceptionally(failure)
+                        } finally { finished(module) }
+                    } else {
+                        future.completeExceptionally(IllegalStateException("SQLite storage is unavailable: ${health.lastError.ifBlank { health.state }}"))
+                        finished(module)
+                    }
                 }
             }
         }
@@ -198,7 +215,23 @@ class SqliteStorage(private val plugin: JavaPlugin) : Storage {
 
     private fun failed(failure: Throwable) {
         health = health.copy(state = "FAILED", lastError = failure.message ?: failure.javaClass.simpleName)
-        plugin.logger.log(Level.SEVERE, "ADM database operation failed", failure)
+        val signature = "${failure.javaClass.name}:${failure.message.orEmpty()}"
+        val now = System.currentTimeMillis()
+        val suppressed = synchronized(failureLogs) {
+            val previous = failureLogs[signature]
+            if (previous == null || now - previous.first >= 60_000) {
+                failureLogs[signature] = now to 0
+                while (failureLogs.size > 64) failureLogs.remove(failureLogs.keys.first())
+                previous?.second ?: 0
+            } else {
+                failureLogs[signature] = previous.first to previous.second + 1
+                null
+            }
+        }
+        if (suppressed != null) {
+            val detail = if (suppressed == 0) "" else " ($suppressed identical failures suppressed in the last minute)"
+            plugin.logger.log(Level.SEVERE, "ADM database operation failed$detail", failure)
+        }
     }
 
     override fun reportFailure(failure: Throwable) { failed(failure) }

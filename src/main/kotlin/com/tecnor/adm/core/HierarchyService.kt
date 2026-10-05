@@ -22,6 +22,7 @@ class HierarchyService {
 
     fun rank(player: Player): Int = provider?.let { it.metadata(player.uniqueId)?.weight ?: 0 }
         ?: when {
+            player.hasPermission("adm.tier.owner") -> 3
             player.hasPermission("adm.tier.admin") -> 2
             player.hasPermission("adm.tier.mod") -> 1
             else -> 0

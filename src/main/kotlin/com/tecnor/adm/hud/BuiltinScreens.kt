@@ -5,6 +5,7 @@ import com.tecnor.adm.service.VanishService
 import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.entity.Player
+import java.util.UUID
 import kotlin.math.ceil
 
 class HomeScreen : HudScreen {
@@ -52,12 +53,25 @@ class PlayerSelectorScreen : PaginatedHudScreen() {
     override val id = "players"
     override val title = "Select Player"
     private var search = ""
+    private var cachedSearch: String? = null
+    private var cachedViewer: UUID? = null
+    private var cachedRoster = emptySet<Pair<UUID, String>>()
+    private var cachedOrder = emptyList<UUID>()
     override fun buttons(manager: HudManager, session: HudSession, viewer: Player): List<HudButton> {
         val slots = manager.contentSlots(session).dropLast(2)
-        val players = Bukkit.getOnlinePlayers().filter { viewer.canSee(it) && it.name.contains(search, true) }.sortedBy { it.name.lowercase() }
-        pages = ceil(players.size.toDouble() / slots.size).toInt().coerceAtLeast(1)
+        val visiblePlayers = Bukkit.getOnlinePlayers().filter { viewer.canSee(it) && it.name.contains(search, true) }
+        val roster = visiblePlayers.mapTo(HashSet()) { it.uniqueId to it.name }
+        if (cachedSearch != search || cachedViewer != viewer.uniqueId || cachedRoster != roster) {
+            cachedSearch = search
+            cachedViewer = viewer.uniqueId
+            cachedRoster = roster
+            cachedOrder = visiblePlayers.sortedBy { it.name.lowercase() }.map { it.uniqueId }
+        }
+        pages = ceil(cachedOrder.size.toDouble() / slots.size).toInt().coerceAtLeast(1)
         page = page.coerceIn(0, pages - 1)
-        val buttons = players.drop(page * slots.size).take(slots.size).mapIndexed { index, player ->
+        val playerIds = cachedOrder.drop(page * slots.size).take(slots.size)
+        val players = playerIds.mapNotNull(Bukkit::getPlayer)
+        val buttons = players.mapIndexed { index, player ->
             val vanished = (manager.service("vanish") as? VanishService)?.staffLevel(player) != null
             val frozen = (manager.service("staff-tools") as? StaffToolsService)?.isFrozen(player.uniqueId) == true
             val muted = (manager.service("punishments") as? com.tecnor.adm.punishment.PunishmentService)?.isMuted(player.uniqueId) == true

@@ -31,8 +31,7 @@ class PunishmentEnforcement(private val punishments: Punishments, private val se
                     mapOf("action" to it.kind, "reason" to it.reason, "expires" to (it.expires?.let(java.time.Instant::ofEpochMilli)?.toString() ?: "permanent")))))
             }
             if (event.loginResult != AsyncPlayerPreLoginEvent.Result.ALLOWED) punishments.mutes.remove(id)
-        } catch (failure: Exception) {
-            punishments.storage.reportFailure(failure)
+        } catch (_: Exception) {
             punishments.mutes.remove(id)
             if (settings.current().loginFallback() == "deny") event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER,
                 messages.render(ActionResult.failure("storage.login-denied")))

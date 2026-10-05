@@ -53,9 +53,16 @@ class AdminService(
             "success" to health.lastSuccess.toString(), "latency" to health.latencyMs.toString(), "error" to health.lastError))
     }
 
+    fun database(actor: CommandActor): ActionResult {
+        check(actor, "adm.admin.database")?.let { return it }
+        val path = plugin.dataFolder.toPath().resolve("adm.sqlite").toAbsolutePath().normalize()
+        permissions.record(actor, "database")
+        return ActionResult.success("storage.database", mapOf("path" to path.toString()))
+    }
+
     fun help(actor: CommandActor): ActionResult {
         unavailable()?.let { return it }
-        if (listOf("version", "reload", "debug", "storage-info", "log", "cleanup").none { actor.hasPermission("adm.admin.$it") }) {
+        if (listOf("version", "reload", "debug", "storage-info", "database", "log", "cleanup").none { actor.hasPermission("adm.admin.$it") }) {
             return ActionResult.failure("command.no-permission")
         }
         return ActionResult.success("command.help", mapOf("command" to settings.startup().commands().name()))

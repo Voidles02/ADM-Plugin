@@ -6,10 +6,12 @@ import com.tecnor.adm.api.Storage
 import com.tecnor.adm.settings.ConfigService
 import com.tecnor.adm.storage.update
 import org.bukkit.plugin.java.JavaPlugin
+import java.util.concurrent.atomic.AtomicBoolean
 
 class DatabaseAuditSink(storage: Storage, private val settings: ConfigService,
                         private val file: FileAuditSink, private val plugin: JavaPlugin) : AuditSink {
     private val storage = com.tecnor.adm.api.ScopedStorage(storage, "audit")
+    private val fallbackWarningLogged = AtomicBoolean(false)
     override fun record(event: AuditEvent) {
         val config = settings.current()
         if (config.value("audit.enabled") == false) return
@@ -19,6 +21,11 @@ class DatabaseAuditSink(storage: Storage, private val settings: ConfigService,
         val source = if (origin == "HUD") origin else event.details["source"] ?: origin
         val record = event.copy(details = event.details + ("source" to source))
         if (secondary) file.record(record)
+        if (storage.health.state != "STARTING" && storage.health.state != "CONNECTED") {
+            if (!secondary) file.record(record)
+            logFallbackOnce()
+            return
+        }
         storage.submit { db ->
             val details = (record.details + ("inventory" to event.inventory)).entries.joinToString("\n") { "${it.key}=${it.value}" }
             db.update("INSERT INTO audit(staff,staff_name,target,target_name,action,details,created,source) VALUES(?,?,?,?,?,?,?,?)",
@@ -27,8 +34,14 @@ class DatabaseAuditSink(storage: Storage, private val settings: ConfigService,
         }.whenComplete { _, error ->
             if (error != null && !secondary) {
                 file.record(record)
-                plugin.logger.warning("Database audit failed; record sent to fallback file sink")
+                logFallbackOnce()
             }
+        }
+    }
+
+    private fun logFallbackOnce() {
+        if (fallbackWarningLogged.compareAndSet(false, true)) {
+            plugin.logger.warning("SQLite audit storage is unavailable; audit records are being sent to the fallback file sink: ${storage.health.lastError.ifBlank { storage.health.state }}")
         }
     }
 

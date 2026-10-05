@@ -1,6 +1,6 @@
 prefix: '<dark_gray>[<aqua>ADM</aqua>]</dark_gray> '
 command:
-  help: '<prefix><gray>Commands: /<command> version, reload, debug, storage-info, log, cleanup</gray>'
+  help: '<prefix><gray>Commands: /<command> version, reload, debug, storage-info, database, log, cleanup</gray>'
   no-permission: '<prefix><red>You do not have permission to do that.</red>'
   module-unavailable: '<prefix><red>The <module> module is unavailable.</red>'
   version: '<prefix><gray>ADM <aqua><version></aqua> by <aqua><author></aqua>.</gray>'
@@ -86,14 +86,16 @@ inventory:
   self-edit: '<prefix><red>Use your own inventory directly; invsee self-editing is unavailable.</red>'
 
 vanish:
-  enabled: '<prefix><green>Vanish enabled at level <level>.</green>'
+  help: '<prefix><yellow>Vanish: /vanish on uses your highest allowed level; /vanish off restores visibility; /vanish set LVL selects a level. Bare /vanish toggles. Higher levels are hidden from more staff; viewers need a level at least as high as yours to see you. Your highest permitted level is <max>.</yellow>'
+  enabled: '<prefix><green>Vanish enabled at level <level>. Use /vanish off to return or /vanish set LVL to change levels.</green>'
   disabled: '<prefix><green>Vanish disabled.</green>'
-  invalid-level: '<prefix><red>You must hold the permission for the requested non-negative vanish level. Your highest level is <max>.</red>'
+  invalid-level: '<prefix><red>That level is not enabled for your role. Your highest permitted level is <max>; use /vanish set LVL with a level you are permitted to use.</red>'
   fake-join: '<yellow><target> joined the game</yellow>'
   fake-quit: '<yellow><target> left the game</yellow>'
 
 storage:
   info: '<prefix><gray>Storage: <state><newline>Last success (epoch ms): <success><newline>Last latency: <latency>ms<newline>Last error: <error></gray>'
+  database: '<prefix><gray>Live SQLite file: <yellow><path></yellow><newline>Open this file in DB Browser on the server host in read-only mode; refresh DB Browser to see new commits. Keep adm.sqlite-wal and adm.sqlite-shm beside it. ADM does not expose the file over the network.</gray>'
   unavailable: '<prefix><red>Storage is unavailable. Check /adm storage-info and the server log.</red>'
   working: '<prefix><gray>Request queued.</gray>'
   login-denied: '<red>Login unavailable: administration storage is offline.</red>'

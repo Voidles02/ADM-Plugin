@@ -51,29 +51,50 @@ class VanishService(
 
     override fun onReload(snapshot: SettingsSnapshot) { refresh() }
 
-    override fun suggestions(command: String, completed: List<String>) = emptyList<String>()
+    override fun suggestions(command: String, completed: List<String>) = when {
+        completed.isEmpty() -> listOf("on", "off", "set", "help")
+        completed.size == 1 && completed[0].equals("set", ignoreCase = true) -> listOf("0", "1", "2", "3")
+        else -> emptyList()
+    }
 
     override fun execute(actor: CommandActor, command: String, arguments: String): ActionResult {
         check(actor, "vanish", "adm.admin.vanish")?.let { return it }
         val player = actor.playerId()?.let(Bukkit::getPlayer) ?: return ActionResult.failure("command.player-only")
         val args = words(arguments)
-        if (args.size > 1) return usage("/vanish [level]")
-        if (args.isEmpty() && player.uniqueId in vanished) {
-            val state = vanished.remove(player.uniqueId)!!
-            player.canPickupItems = state.pickup
-            Bukkit.getOnlinePlayers().forEach { it.showPlayer(plugin, player) }
-            if (config.current().value("vanish.fake-join") == true) fake(player, "vanish.fake-join")
-            return done(actor, "vanish", "vanish.disabled")
+        if (args.isEmpty()) {
+            return if (player.uniqueId in vanished) deactivate(actor, player) else enableVanish(actor, player, level(player))
         }
+        return when (args[0].lowercase()) {
+            "help" -> if (args.size == 1) ActionResult.success("vanish.help", mapOf("max" to level(player).toString())) else usage("/vanish [on|off|set LVL|help]")
+            "off" -> if (args.size == 1) deactivate(actor, player) else usage("/vanish [on|off|set LVL|help]")
+            "on" -> if (args.size == 1) enableVanish(actor, player, level(player)) else usage("/vanish [on|off|set LVL|help]")
+            "set" -> {
+                if (args.size != 2) return usage("/vanish [on|off|set LVL|help]")
+                val selected = args[1].toIntOrNull()
+                if (selected == null) ActionResult.failure("vanish.invalid-level", mapOf("max" to level(player).toString()))
+                else enableVanish(actor, player, selected)
+            }
+            else -> usage("/vanish [on|off|set LVL|help]")
+        }
+    }
+
+    private fun enableVanish(actor: CommandActor, player: Player, selected: Int): ActionResult {
         val maximum = level(player)
-        val selected = if (args.isEmpty()) maximum else args.single().toIntOrNull()
-        if (selected == null || selected < 0 || !player.hasPermission("adm.vanish.level.$selected")) {
+        if (selected < 0 || !player.hasPermission("adm.vanish.level.$selected")) {
             return ActionResult.failure("vanish.invalid-level", mapOf("max" to maximum.toString()))
         }
         val alreadyVanished = player.uniqueId in vanished
         activate(player, selected)
         if (!alreadyVanished && config.current().value("vanish.fake-quit") == true) fake(player, "vanish.fake-quit")
         return done(actor, "vanish", "vanish.enabled", mapOf("level" to selected.toString()))
+    }
+
+    private fun deactivate(actor: CommandActor, player: Player): ActionResult {
+        val state = vanished.remove(player.uniqueId) ?: return done(actor, "vanish", "vanish.disabled")
+        player.canPickupItems = state.pickup
+        Bukkit.getOnlinePlayers().forEach { it.showPlayer(plugin, player) }
+        if (config.current().value("vanish.fake-join") == true) fake(player, "vanish.fake-join")
+        return done(actor, "vanish", "vanish.disabled")
     }
 
     private fun level(player: Player): Int = player.effectivePermissions.asSequence()

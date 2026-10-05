@@ -49,6 +49,7 @@ class CoreModule(
                         .then(Commands.literal("version").executes { execute(it.source, service::version) })
                         .then(Commands.literal("reload").executes { execute(it.source, service::reload) })
                         .then(Commands.literal("storage-info").executes { execute(it.source, service::storageInfo) })
+                        .then(Commands.literal("database").executes { execute(it.source, service::database) })
                         .then(Commands.literal("cleanup").executes { execute(it.source, service::cleanup) })
                         .then(Commands.literal("log")
                             .executes { execute(it.source) { actor -> service.log(actor, "") } }

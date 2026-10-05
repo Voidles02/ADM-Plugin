@@ -13,6 +13,7 @@ import com.tecnor.adm.core.PermissionService
 import com.tecnor.adm.core.SchedulerHelper
 import com.tecnor.adm.hud.HudManager
 import com.tecnor.adm.integration.LuckPermsIntegration
+import com.tecnor.adm.integration.LuckPermsRoleSetup
 import com.tecnor.adm.message.MessageService
 import com.tecnor.adm.module.CoreModule
 import com.tecnor.adm.module.FeatureModule
@@ -33,6 +34,7 @@ import com.tecnor.adm.settings.SettingsLoader
 import com.tecnor.adm.staff.StaffToolsService
 import com.tecnor.adm.storage.LoginRecorder
 import com.tecnor.adm.storage.SqliteStorage
+import net.luckperms.api.LuckPermsProvider
 import org.bukkit.event.HandlerList
 import org.bukkit.plugin.ServicePriority
 import org.bukkit.plugin.java.JavaPlugin
@@ -89,6 +91,7 @@ class ADMPlugin : JavaPlugin() {
             try {
                 val provider = LuckPermsIntegration(this, scheduler)
                 hierarchy.provider = provider
+                LuckPermsRoleSetup(LuckPermsProvider.get(), logger).setup()
                 for (player in server.onlinePlayers) provider.refresh(player.uniqueId)
             } catch (failure: Throwable) {
                 hierarchy.provider?.close()
@@ -129,7 +132,7 @@ class ADMPlugin : JavaPlugin() {
         storage.ready.thenAccept { available -> scheduler.main(Runnable {
             if (!available) {
                 for (module in listOf("punishments", "staff-tools", "reports", "audit")) {
-                    if (moduleManager.isEnabled(module)) moduleManager.fail(module, IllegalStateException("SQLite driver or connection unavailable"))
+                    if (moduleManager.isEnabled(module)) moduleManager.fail(module, IllegalStateException("SQLite driver or connection unavailable: ${storage.health.lastError}"))
                 }
             }
         }) }

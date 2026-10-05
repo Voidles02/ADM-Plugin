@@ -23,16 +23,46 @@ fun <T> Connection.queryFirst(sql: String, vararg values: Any?, read: (ResultSet
     }
 
 fun <T> Connection.transaction(work: (Connection) -> T): T {
+    check(autoCommit) { "Cannot start a transaction while auto-commit is disabled" }
     autoCommit = false
+    var transactionFailure: Throwable? = null
     try {
         val result = work(this)
         commit()
         return result
     } catch (failure: Throwable) {
-        rollback()
+        transactionFailure = failure
+        try {
+            rollback()
+        } catch (rollbackFailure: Throwable) {
+            if (rollbackFailure !== failure) failure.addSuppressed(rollbackFailure)
+            try {
+                close()
+            } catch (closeFailure: Throwable) {
+                if (closeFailure !== failure) failure.addSuppressed(closeFailure)
+            }
+        }
         throw failure
     } finally {
-        autoCommit = true
+        try {
+            autoCommit = true
+        } catch (restoreFailure: Throwable) {
+            val originalFailure = transactionFailure
+            if (originalFailure == null) {
+                try {
+                    close()
+                } catch (closeFailure: Throwable) {
+                    if (closeFailure !== restoreFailure) restoreFailure.addSuppressed(closeFailure)
+                }
+                throw restoreFailure
+            }
+            if (restoreFailure !== originalFailure) originalFailure.addSuppressed(restoreFailure)
+            try {
+                close()
+            } catch (closeFailure: Throwable) {
+                if (closeFailure !== originalFailure) originalFailure.addSuppressed(closeFailure)
+            }
+        }
     }
 }
 

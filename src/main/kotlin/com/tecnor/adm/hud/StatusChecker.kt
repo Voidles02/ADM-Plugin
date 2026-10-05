@@ -3,6 +3,7 @@ package com.tecnor.adm.hud
 import com.tecnor.adm.api.ActionResult
 import com.tecnor.adm.api.CommandActor
 import com.tecnor.adm.module.ModuleStatus
+import net.kyori.adventure.text.minimessage.MiniMessage
 import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.entity.Player
@@ -10,9 +11,11 @@ import org.bukkit.event.Listener
 import org.bukkit.scheduler.BukkitTask
 import java.time.Instant
 
+private val statusMiniMessage = MiniMessage.miniMessage()
+
 data class ModuleHealth(val module: String, val color: String, val material: Material, val details: List<String>) {
     fun lore() = listOf("<$color>Health: ${when (color) { "green" -> "working"; "yellow" -> "degraded"; "red" -> "disabled / failed"; else -> "no permission" }}</$color>") +
-        details.map { "<gray>${net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().escapeTags(it)}</gray>" }
+        details.map { "<gray>${statusMiniMessage.escapeTags(it)}</gray>" }
 }
 
 class StatusChecker(private val manager: HudManager) : AutoCloseable {
@@ -23,6 +26,7 @@ class StatusChecker(private val manager: HudManager) : AutoCloseable {
     private var lastStorageError = ""
     private val storageErrors = ArrayDeque<Pair<Long, String>>()
     private val storageModules = setOf("punishments", "staff-tools", "reports", "audit")
+    private val storedTargetModules = setOf("punishments", "reports")
 
     fun clearCache() { cached = emptyMap(); cachedAt = 0; nextPing = 0 }
 
@@ -118,13 +122,15 @@ class StatusChecker(private val manager: HudManager) : AutoCloseable {
             Bukkit.getCommandMap().getCommand(root) != null
         }
         val target = session.target.id.toString()
+        val requiresStoredTarget = module in storedTargetModules
         val checks = listOf("module" to (module == "hud" || manager.moduleAvailable(module)), "commands" to registered, "permission" to permitted)
         manager.load(session, { db ->
             val ping = db.createStatement().use { it.executeQuery("SELECT 1").use { rows -> rows.next() && rows.getInt(1) == 1 } }
-            val resolved = db.prepareStatement("SELECT uuid FROM players WHERE uuid=?").use { statement -> statement.setString(1, target); statement.executeQuery().use { it.next() } }
+            val resolved = !requiresStoredTarget || db.prepareStatement("SELECT uuid FROM players WHERE uuid=?").use { statement -> statement.setString(1, target); statement.executeQuery().use { it.next() } }
             ping to resolved
         }) { result, error ->
-            val results = checks + listOf("storage ping" to (error == null && result?.first == true), "target resolution" to (error == null && result?.second == true))
+            val results = checks + listOf("storage ping" to (error == null && result?.first == true)) +
+                if (requiresStoredTarget) listOf("stored target" to (error == null && result?.second == true)) else emptyList()
             val pass = results.all { it.second }
             val details = results.joinToString(", ") { "${it.first}=${if (it.second) "PASS" else "FAIL"}" }
             val text = "${if (pass) "PASS" else "FAIL"}: $details"

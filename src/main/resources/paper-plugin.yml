@@ -1,7 +1,7 @@
 name: ADM
 version: '${version}'
 main: com.tecnor.adm.ADMPlugin
-description: Advanced Admin Management - Stage 6 inventory HUD and system health
+description: Advanced Admin Management - Stage 7 SQLite diagnostics and live database access
 api-version: '1.21'
 authors: [voidles02]
 
@@ -22,6 +22,7 @@ permissions:
       adm.bypass.*: true
       adm.tier.mod: true
       adm.tier.admin: true
+      adm.tier.owner: true
       adm.immune: true
       adm.report: true
       adm.hud.*: true
@@ -218,11 +219,16 @@ permissions:
     default: op
   adm.tier.admin:
     default: op
+  adm.tier.owner:
+    default: op
   adm.immune:
     default: op
   adm.report:
     default: true
   adm.admin.storage-info:
+    default: op
+  adm.admin.database:
+    description: View the live ADM SQLite database path
     default: op
   adm.mod.mute:
     default: op

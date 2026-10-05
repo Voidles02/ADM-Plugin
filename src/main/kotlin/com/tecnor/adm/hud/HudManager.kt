@@ -10,6 +10,7 @@ import com.tecnor.adm.service.*
 import com.tecnor.adm.settings.SettingsSnapshot
 import com.tecnor.adm.staff.StaffToolsService
 import io.papermc.paper.event.player.AsyncChatEvent
+import net.kyori.adventure.text.minimessage.MiniMessage
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
 import org.bukkit.Bukkit
 import org.bukkit.Material
@@ -39,6 +40,7 @@ class HudManager(
     val registry = HudRegistry()
     val sessions = ConcurrentHashMap<UUID, HudSession>()
     private val builder = HudItemBuilder(this)
+    private val miniMessage = MiniMessage.miniMessage()
     @Volatile private var stopping = false
     val statusChecker = StatusChecker(this)
     private val queuedClicks = mutableSetOf<UUID>()
@@ -284,11 +286,14 @@ class HudManager(
         val name = action.command + if (action.argument.isNotEmpty()) " (${action.argument})" else ""
         val required = if (!viewer.hasPermission(action.node)) action.node else
             if (action.target && session.target.id != viewer.uniqueId && action.command in listOf("gamemode", "fly", "speed", "god", "heal", "feed", "clear")) "${action.node}.others" else action.node
+        val onlineTarget = if (action.target) Bukkit.getPlayer(session.target.id) else null
         val lore = mutableListOf(text("descriptions.${action.command}", "<gray>Use the ${action.command} service action</gray>"),
             "<gray>Syntax: ${escape(action.syntax)}</gray>", "<gray>Aliases: ${escape(action.aliases)}</gray>",
             "<gray>Target: ${escape(if (action.target) session.target.name else viewer.name)}</gray>",
             "<gray>Base node: ${action.node} (${if (viewer.hasPermission(action.node)) "granted" else "missing"})</gray>",
+            "<gray>Effective permission: $required (${if (viewer.hasPermission(required)) "granted" else "missing"})</gray>",
             "<gray>Left: activate; right: select target</gray>", "<gray>Shift: options; middle: refresh</gray>")
+        if (action.target) lore += "<gray>Target availability: ${if (onlineTarget == null) "offline; stored-data or provider support may be required" else "online in ${escape(onlineTarget.world.name)}"}</gray>"
         if (state != null) lore += "<aqua>Current state: ${escape(state)}</aqua>"
         if (action.destructive) lore += text("tooltips.destructive", "<red>Destructive: confirmation required</red>")
         if (action.module == "inventory") {
@@ -327,7 +332,7 @@ class HudManager(
             else -> null
         }
     }
-    fun escape(text: String) = net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().escapeTags(text)
+    fun escape(text: String) = miniMessage.escapeTags(text)
 
     @EventHandler(priority = EventPriority.LOWEST)
     fun chat(event: AsyncChatEvent) {

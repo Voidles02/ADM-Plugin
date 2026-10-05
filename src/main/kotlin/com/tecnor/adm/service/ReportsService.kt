@@ -49,6 +49,7 @@ class ReportsService(plugin: JavaPlugin, modules: ModuleManager, permissions: Pe
     override fun disable() {
         Bukkit.getOnlinePlayers().filter { (it.openInventory.topInventory.holder as? StaffPageHolder)?.kind == "reports" }.forEach { it.closeInventory() }
         requests.clear()
+        cooldowns.clear()
     }
 
     override fun execute(actor: CommandActor, command: String, arguments: String): ActionResult {
@@ -64,7 +65,9 @@ class ReportsService(plugin: JavaPlugin, modules: ModuleManager, permissions: Pe
         }
         if (args.size < 2) return usage("/report <player> <reason>")
         val id = player.uniqueId
-        val remaining = (cooldowns[id] ?: 0) - System.currentTimeMillis()
+        val now = System.currentTimeMillis()
+        cooldowns.entries.removeIf { it.value <= now }
+        val remaining = (cooldowns[id] ?: 0) - now
         if (remaining > 0) return ActionResult.failure("command.cooldown", mapOf("seconds" to ceil(remaining / 1000.0).toLong().toString()))
         if (!pendingReports.add(id)) return ActionResult.failure("staff.busy")
         val reason = args.drop(1).joinToString(" ").take(2000)

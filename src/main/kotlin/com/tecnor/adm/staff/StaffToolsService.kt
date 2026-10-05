@@ -94,6 +94,7 @@ class StaffToolsService(plugin: JavaPlugin, modules: ModuleManager, permissions:
         actionbar = null
         sessions.keys.toList().forEach { id -> Bukkit.getPlayer(id)?.let { restore(it, true) } }
         plugin.server.servicesManager.unregister(this)
+        recovery.clear()
         pending.clear()
         freezePending.clear()
     }
@@ -272,8 +273,7 @@ class StaffToolsService(plugin: JavaPlugin, modules: ModuleManager, permissions:
             if (data.first) frozen.add(id) else frozen.remove(id)
             recovery.remove(id)
             data.second?.let { recovery[id] = it }
-        } catch (failure: Exception) {
-            storage.reportFailure(failure)
+        } catch (_: Exception) {
             if (settings.current().loginFallback() == "deny" || sessions.containsKey(id) || recovery.containsKey(id)) event.disallow(
                 AsyncPlayerPreLoginEvent.Result.KICK_OTHER, messages.render(ActionResult.failure("storage.login-denied")))
         }
