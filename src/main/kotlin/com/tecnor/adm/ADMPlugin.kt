@@ -12,6 +12,7 @@ import com.tecnor.adm.core.HierarchyService
 import com.tecnor.adm.core.PermissionService
 import com.tecnor.adm.core.SchedulerHelper
 import com.tecnor.adm.hud.HudManager
+import com.tecnor.adm.integration.GrimCompatibility
 import com.tecnor.adm.integration.LuckPermsIntegration
 import com.tecnor.adm.integration.LuckPermsRoleSetup
 import com.tecnor.adm.message.MessageService
@@ -59,6 +60,7 @@ class ADMPlugin : JavaPlugin() {
     private lateinit var enderChestProviders: EnderChestProviderRegistry
     private lateinit var storage: EmbeddedStorage
     private lateinit var audit: DatabaseAuditSink
+    private lateinit var grimCompatibility: GrimCompatibility
 
     override fun onEnable() {
         val directory = dataFolder.toPath()
@@ -86,6 +88,9 @@ class ADMPlugin : JavaPlugin() {
         val fileAudit = FileAuditSink(directory.resolve("audit"), logger, initial)
         audit = DatabaseAuditSink(storage, settings, fileAudit, this)
         server.servicesManager.register(AuditSink::class.java, audit, this, ServicePriority.Normal)
+        grimCompatibility = GrimCompatibility(this)
+        server.pluginManager.registerEvents(grimCompatibility, this)
+        grimCompatibility.enable()
         val scheduler = SchedulerHelper(this)
         if (server.pluginManager.isPluginEnabled("LuckPerms")) {
             try {
@@ -150,6 +155,7 @@ class ADMPlugin : JavaPlugin() {
             server.servicesManager.unregister(audit)
             audit.closeWithin(TimeUnit.NANOSECONDS.toMillis((deadline - System.nanoTime()).coerceAtLeast(0)))
         }
+        if (::grimCompatibility.isInitialized) grimCompatibility.close()
         HandlerList.unregisterAll(this)
         server.scheduler.cancelTasks(this)
         if (::hierarchy.isInitialized) hierarchy.provider?.close()

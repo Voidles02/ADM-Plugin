@@ -59,6 +59,11 @@ information:
 chat:
   broadcast: '<prefix><gold><message></gold>'
   broadcast-sent: '<prefix><green>Broadcast sent.</green>'
+  announcement-title: '<dark_gray>[<aqua><bold>ANNOUNCEMENT</bold></aqua>]</dark_gray>'
+  announcement-subtitle: '<white><message></white>'
+  announcement: '<newline><dark_gray><bold>✦</bold></dark_gray> <aqua><bold>ANNOUNCEMENT</bold></aqua><newline><gold><message></gold><newline>'
+  announcement-sent: '<prefix><green>Announcement sent.</green>'
+  announcement-too-long: '<prefix><red>Announcement text must be 256 characters or fewer.</red>'
   clear-line: ' '
   cleared: '<prefix><yellow>Chat was cleared by <actor>.</yellow>'
   clear-success: '<prefix><green>Chat cleared.</green>'

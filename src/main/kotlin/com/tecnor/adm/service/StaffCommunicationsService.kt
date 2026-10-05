@@ -33,6 +33,9 @@ class StaffCommunicationsService(plugin: JavaPlugin, modules: ModuleManager, per
     private val commandSpies = mutableSetOf<UUID>()
     private val socialSpies = mutableSetOf<UUID>()
     private val scheduler = SchedulerHelper(plugin)
+    private val sensitiveCommands = setOf(
+        "login", "l", "register", "changepassword", "changepass", "password", "passwd", "email", "pin", "2fa", "auth", "authenticate"
+    )
 
     fun isStaffChat(id: UUID) = id in toggled
     fun isSpy(id: UUID, type: String) = id in if (type == "social") socialSpies else commandSpies
@@ -104,7 +107,10 @@ class StaffCommunicationsService(plugin: JavaPlugin, modules: ModuleManager, per
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     fun commands(event: PlayerCommandPreprocessEvent) {
         val label = event.message.substringBefore(' ').removePrefix("/").substringAfter(':').lowercase()
-        val ignored = config.current().value("spy.ignored-commands") as? List<*> ?: listOf("login", "register")
+        val configuredIgnored = (config.current().value("spy.ignored-commands") as? List<*>)
+            ?.mapNotNull { (it as? String)?.trim()?.substringAfter(':')?.lowercase() }
+            .orEmpty()
+        val ignored = sensitiveCommands + configuredIgnored
         if (label in ignored) return
         val social = label in (config.current().value("spy.social-commands") as? List<*> ?: listOf("msg", "tell", "w", "reply", "r"))
         val viewers = commandSpies + if (social) socialSpies else emptySet()

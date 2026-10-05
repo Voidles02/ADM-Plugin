@@ -1,7 +1,7 @@
 name: ADM
 version: '${version}'
 main: com.tecnor.adm.ADMPlugin
-description: Advanced Admin Management - Stage 9 embedded storage
+description: Advanced Admin Management - Stage 10 Grim Anticheat compatibility
 api-version: '1.21'
 authors: [voidles02]
 
@@ -11,6 +11,10 @@ dependencies:
       load: BEFORE
       required: false
       join-classpath: true
+    GrimAC:
+      load: BEFORE
+      required: false
+      join-classpath: false
 
 permissions:
   adm.*:
@@ -39,6 +43,7 @@ permissions:
       adm.admin.clear.others: true
       adm.admin.tpall: true
       adm.admin.tppos: true
+      adm.admin.announcement: true
       adm.admin.broadcast: true
       adm.admin.sudo: true
       adm.admin.reload: true
@@ -170,6 +175,9 @@ permissions:
     default: op
   adm.admin.broadcast:
     default: op
+  adm.admin.announcement:
+    description: Send a title announcement to all players
+    default: op
   adm.admin.sudo:
     default: op
   adm.admin.reload:
@@ -279,6 +287,9 @@ permissions:
     default: op
   adm.admin.cleanup:
     default: op
+  adm.grim.exempt:
+    description: Exempt from Grim AntiCheat when GrimAC is installed
+    default: false
   adm.hud.*:
     default: op
     children:

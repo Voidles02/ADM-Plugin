@@ -11,6 +11,7 @@ import com.tecnor.adm.settings.ConfigService
 import com.tecnor.adm.settings.SettingsSnapshot
 import io.papermc.paper.event.player.ChatEvent
 import net.kyori.adventure.text.Component
+import net.kyori.adventure.title.Title
 import org.bukkit.Bukkit
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
@@ -18,6 +19,7 @@ import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerJoinEvent
 import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.plugin.java.JavaPlugin
+import java.time.Duration
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -32,7 +34,8 @@ class ChatService(
     private val hierarchy: HierarchyService
 ) : ServiceSupport(plugin, modules, permissions), Listener {
     override val id = "chat"
-    override val commands = listOf("broadcast", "clearchat", "mutechat", "slowmode", "sudo").map { CommandSpec(it) }
+    override val commands = listOf(CommandSpec("announcement", listOf("annoucement"))) +
+        listOf("broadcast", "clearchat", "mutechat", "slowmode", "sudo").map { CommandSpec(it) }
     private class Timestamp(var last: Long = 0)
     private val timestamps = ConcurrentHashMap<UUID, Timestamp>()
     private var muted = false
@@ -50,9 +53,28 @@ class ChatService(
     }
 
     override fun execute(actor: CommandActor, command: String, arguments: String): ActionResult {
-        val tier = if (command in listOf("broadcast", "sudo")) "admin" else "mod"
+        val tier = if (command in listOf("announcement", "broadcast", "sudo")) "admin" else "mod"
         check(actor, command, "adm.$tier.$command")?.let { return it }
         when (command) {
+            "announcement" -> {
+                if (arguments.isBlank()) return usage("/announcement <message>")
+                if (arguments.length > 256) return ActionResult.failure("chat.announcement-too-long")
+                val values = mapOf("message" to arguments.trim())
+                val title = messages.render(ActionResult.success("chat.announcement-title"))
+                val subtitle = messages.render(ActionResult.success("chat.announcement-subtitle", values))
+                val display = Title.title(
+                    title,
+                    subtitle,
+                    Title.Times.times(Duration.ofMillis(500), Duration.ofSeconds(5), Duration.ofMillis(500))
+                )
+                val announcement = messages.render(ActionResult.success("chat.announcement", values))
+                Bukkit.getOnlinePlayers().forEach {
+                    it.showTitle(display)
+                    it.sendMessage(announcement)
+                }
+                Bukkit.getConsoleSender().sendMessage(announcement)
+                return done(actor, command, "chat.announcement-sent")
+            }
             "broadcast" -> {
                 if (arguments.isBlank()) return usage("/broadcast <message>")
                 announce("chat.broadcast", mapOf("message" to arguments))
@@ -95,7 +117,7 @@ class ChatService(
                 hierarchy.check(actor, target)?.let { return it }
                 sudoExecuting = true
                 try {
-                    plugin.logger.info("${actor.name()} sudo ${target.name}: ${parts[1]}")
+                    plugin.logger.info("${actor.name()} used /sudo on ${target.name}")
                     permissions.record(actor, command)
                     if (parts[1].startsWith('/')) {
                         if (!Bukkit.dispatchCommand(target, parts[1].substring(1))) return ActionResult.failure("chat.sudo-failed")

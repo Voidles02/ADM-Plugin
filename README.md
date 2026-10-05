@@ -1,13 +1,14 @@
 # ADM — Advanced Admin Management
 
 Author: **voidles02**  
-Stage: **9 — embedded H2 storage**
+Version: **0.9.0-stage10**  
+Stage: **10 — Grim Anticheat compatibility**
 
 ## Installation
 
-Use Paper 1.21.x and Java 21. The Gradle Kotlin DSL project compiles against Paper 1.21.4; Paper and LuckPerms APIs are compile-only. Java and Kotlin code target Java 21. Kotlin stdlib and embedded H2 are declared in the root `manifest.kod`; H2 2.3.232 is an implementation dependency. No libraries are shaded. This is not a Spigot or Folia plugin.
+Use Paper 1.21.x and Java 21. The Gradle Kotlin DSL project compiles against Paper 1.21.4; Paper and LuckPerms APIs are compile-only. Java and Kotlin code target Java 21. Kotlin stdlib and embedded H2 are declared in the root `manifest.kod`; H2 2.3.232 is an implementation dependency. GrimAC is an optional server dependency loaded before ADM; ADM uses Bukkit permissions and does not link against Grim classes. No libraries are shaded. This is not a Spigot or Folia plugin.
 
-Put the built ADM jar in `plugins/` and restart the server. LuckPerms is optional: when installed it loads before ADM. First startup creates `plugins/ADM/config.yml`, `messages.yml`, and `hud.yml`. Existing files are preserved: absent settings use defaults, and absent messages fall back with a once-per-key warning. Add the new entries from the bundled configuration to customize them.
+Put the built ADM jar in `plugins/` and restart the server. LuckPerms and GrimAC are optional and load before ADM when installed. First startup creates `plugins/ADM/config.yml`, `messages.yml`, and `hud.yml`. Existing files are preserved: absent settings use defaults, and absent messages fall back with a once-per-key warning. Add the new entries from the bundled configuration to customize them.
 
 When LuckPerms is enabled, ADM creates or updates the `moderator`, `admin`, and `owner` groups. It never assigns players to these groups automatically; use LuckPerms commands to promote staff explicitly. The groups inherit permissions in order: `owner` inherits `admin`, and `admin` inherits `moderator`.
 
@@ -19,7 +20,7 @@ When LuckPerms is enabled, ADM creates or updates the `moderator`, `admin`, and 
 | `modules.player-tools` | Game modes, flight, speed, god, heal, feed, repair, clear |
 | `modules.teleport` | Player/coordinate teleports, back, safe top |
 | `modules.information` | Near, ping, online list, whois, seen |
-| `modules.chat` | Broadcast, clear/mute chat, slowmode, sudo |
+| `modules.chat` | Title announcements, broadcast, clear/mute chat, slowmode, sudo |
 | `modules.inventory` | Ender Chest providers, locked ender editing, invsee |
 | `modules.vanish` | `/vanish on|off|set LVL|help`, level-based visibility, silent joins/quits, pickup and mob-target protection |
 | `modules.punishments` | Persistent bans, IP bans, mutes, warnings, kicks, history, alts |
@@ -61,6 +62,7 @@ Command nodes default to op-only. `vanish.on-join` defaults to true in the shipp
 | `/ping [player]` | `adm.mod.ping` | — |
 | `/list` | `adm.mod.list` | — |
 | `/broadcast <message>` | `adm.admin.broadcast` | — |
+| `/announcement <message>`, `/annoucement` | `adm.admin.announcement` | Shows a title and chat announcement to online players |
 | `/clearchat` | `adm.mod.clearchat` | — |
 | `/mutechat` | `adm.mod.mutechat` | — |
 | `/slowmode <seconds\|off>` | `adm.mod.slowmode` | — |
@@ -120,6 +122,10 @@ God, clear, heal, and feed on others, sudo, freeze, and every punishment command
 
 The isolated LuckPerms integration caches plain prefix, suffix, and primary-group weight metadata. Joins and `UserDataRecalculateEvent` refresh it; quits remove it. ADM also creates/updates its three default groups asynchronously at startup. Permission and inheritance nodes are added without deleting custom group permissions. ADM does not assign users to groups. LuckPerms API references are confined to optional integration and startup setup code. No users are loaded from storage or the network by ADM. If integration initialization fails, ADM logs the problem and uses tier markers.
 
+### Grim Anticheat compatibility
+
+When GrimAC is installed, ADM provides an opt-in permission bridge: players with `adm.grim.exempt` receive Grim's `grim.exempt` permission while GrimAC is enabled. The node defaults to false and is deliberately not included in `adm.admin.*` or the automatically created LuckPerms roles. Grant it only to staff who should bypass Grim checks, for example with `lp group moderator permission set adm.grim.exempt true`. Changes are synchronized within two seconds; attachments are removed when a player leaves, GrimAC is disabled, or ADM shuts down. Without the opt-in node, ADM does not exempt players or alter Grim checks.
+
 ### Default LuckPerms roles
 
 ADM assigns weights 10, 50, and 100 to the default Moderator, Admin, and Owner groups. Group names are lowercase in LuckPerms. Permissions from each parent group are inherited.
@@ -165,7 +171,7 @@ All ADM messages use configurable MiniMessage templates in `messages.yml`. Missi
 - Chat enforcement uses Paper's synchronous `ChatEvent`, intentionally scheduling normal chat handling on the server thread. Early returns, preallocated timestamps, and cached denial components avoid ADM allocations during normal hot-path chat checks. Bypass permissions are checked live.
 - All gameplay/permission/hierarchy access is main-thread confined. Reload workers handle only immutable plain data and local YAML parsers. LuckPerms event callbacks copy UUIDs and schedule cache refresh on the main thread. Async teleport completion schedules all live player/world access back to the main thread.
 - ConcurrentHashMap-backed player caches are documented in their owning services; mutable gameplay state remains main-thread confined. ConfigService's atomic snapshot and message warning sets are safe for cross-thread reads. Service methods own module/permission/hierarchy/cooldown/audit rules, not the command adapter.
-- Accepted feature actions are logged to the server log; sudo logs actor, target, and payload. Inventory access/edits, punishments, staff-mode transitions, freeze changes, and reports go through `api.AuditSink` into embedded storage. Whois IP values are not logged to the server log.
+- Accepted feature actions are logged to the server log; sudo logs actor and target but never its command payload. Command spies suppress common login/password commands. Inventory access/edits, punishments, staff-mode transitions, freeze changes, and reports go through `api.AuditSink` into embedded storage. Whois IP values are not logged to the server log.
 - Shutdown restores staff snapshots on the main thread, closes inventory views, flushes/releases provider leases, restores other temporary player state, unregisters listeners, cancels tasks, and drains database/audit/reload workers within one shared five-second waiting budget. Snapshots are durable before staff kits can be equipped.
 
 ## Known limitations

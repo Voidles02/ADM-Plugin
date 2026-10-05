@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.tecnor.adm"
-version = "0.8.0-stage9"
+version = "0.9.0-stage10"
 
 repositories {
     mavenCentral()

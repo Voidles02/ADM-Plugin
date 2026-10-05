@@ -96,7 +96,7 @@ staffchat:
   prefix: '<dark_gray>[<aqua>Staff</aqua>]</dark_gray> '
 
 spy:
-  ignored-commands: [login, register]
+  ignored-commands: [login, l, register, changepassword, changepass, password, passwd, email, pin, 2fa, auth, authenticate]
   social-commands: [msg, tell, w, reply, r]
 
 reports:
