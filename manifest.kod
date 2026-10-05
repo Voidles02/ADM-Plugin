@@ -1,2 +1,3 @@
 include:
   - kotlin-stdlib
+  - h2

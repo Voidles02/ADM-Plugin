@@ -66,7 +66,7 @@ class PunishmentService(plugin: JavaPlugin, modules: ModuleManager, permissions:
         val table = if (command == "alts") "players" else "punishments"
         val where = when (command) {
             "alts" -> "ip=?"
-            "warnings" -> "target=? AND kind='WARN' AND cleared=0"
+            "warnings" -> "target=? AND kind='WARN' AND cleared=FALSE"
             else -> if (kind == "*") "target=?" else { parameters.add(kind.uppercase()); "target=? AND kind=?" }
         }
         val count = db.query("SELECT COUNT(*) FROM $table WHERE $where", *parameters.toTypedArray()) { it.getInt(1) }.first()
@@ -152,7 +152,7 @@ class PunishmentService(plugin: JavaPlugin, modules: ModuleManager, permissions:
             val now = System.currentTimeMillis()
             val operation = storage.submit { db -> db.transaction {
                 when (command) {
-                    "clearwarnings" -> db.update("UPDATE punishments SET cleared=1 WHERE target=? AND kind='WARN'", target.id.toString())
+                    "clearwarnings" -> db.update("UPDATE punishments SET cleared=TRUE WHERE target=? AND kind='WARN'", target.id.toString())
                     "unmute" -> db.update("UPDATE punishments SET revoked=? WHERE target=? AND kind='MUTE' AND revoked IS NULL", now, target.id.toString())
                     else -> if (ip != null) db.update("UPDATE punishments SET revoked=? WHERE ip=? AND kind='IPBAN' AND revoked IS NULL", now, ip)
                         else db.update("UPDATE punishments SET revoked=? WHERE (target=? AND kind='BAN' OR ip=? AND kind='IPBAN') AND revoked IS NULL", now, target.id.toString(), target.ip)

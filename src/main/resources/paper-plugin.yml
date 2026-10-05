@@ -1,7 +1,7 @@
 name: ADM
 version: '${version}'
 main: com.tecnor.adm.ADMPlugin
-description: Advanced Admin Management - Stage 7 SQLite diagnostics and live database access
+description: Advanced Admin Management - Stage 9 embedded storage
 api-version: '1.21'
 authors: [voidles02]
 
@@ -44,6 +44,7 @@ permissions:
       adm.admin.reload: true
       adm.admin.version: true
       adm.admin.debug: true
+      adm.admin.database: true
       adm.admin.endersee: true
       adm.admin.enderedit: true
       adm.admin.invsee: true
@@ -228,7 +229,7 @@ permissions:
   adm.admin.storage-info:
     default: op
   adm.admin.database:
-    description: View the live ADM SQLite database path
+    description: View the ADM embedded database file path
     default: op
   adm.mod.mute:
     default: op

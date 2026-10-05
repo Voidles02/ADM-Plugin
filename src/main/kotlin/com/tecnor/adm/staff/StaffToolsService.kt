@@ -216,7 +216,7 @@ class StaffToolsService(plugin: JavaPlugin, modules: ModuleManager, permissions:
         if (!freezePending.add(id)) return ActionResult.failure("staff.busy")
         val enabled = id !in frozen
         val staff = actor.playerId()?.toString() ?: "CONSOLE"
-        storage.submit { db -> if (enabled) db.update("INSERT OR IGNORE INTO frozen(uuid,staff,created) VALUES(?,?,?)", id.toString(), staff, System.currentTimeMillis())
+        storage.submit { db -> if (enabled) db.update("MERGE INTO frozen(uuid,staff,created) KEY(uuid) VALUES(?,?,?)", id.toString(), staff, System.currentTimeMillis())
             else db.update("DELETE FROM frozen WHERE uuid=?", id.toString()) }.whenComplete { _, error -> scheduler.main(Runnable {
             freezePending.remove(id)
             if (error != null) {

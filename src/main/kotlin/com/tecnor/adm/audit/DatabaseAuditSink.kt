@@ -41,7 +41,7 @@ class DatabaseAuditSink(storage: Storage, private val settings: ConfigService,
 
     private fun logFallbackOnce() {
         if (fallbackWarningLogged.compareAndSet(false, true)) {
-            plugin.logger.warning("SQLite audit storage is unavailable; audit records are being sent to the fallback file sink: ${storage.health.lastError.ifBlank { storage.health.state }}")
+            plugin.logger.warning("Embedded audit storage is unavailable; audit records are being sent to the fallback file sink: ${storage.health.lastError.ifBlank { storage.health.state }}")
         }
     }
 

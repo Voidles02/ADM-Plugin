@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.tecnor.adm"
-version = "0.7.0-stage7"
+version = "0.8.0-stage9"
 
 repositories {
     mavenCentral()
@@ -15,7 +15,7 @@ dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
     compileOnly("net.luckperms:api:5.4")
     implementation(kotlin("stdlib"))
-    implementation("org.xerial:sqlite-jdbc:3.53.4.0")
+    implementation("com.h2database:h2:2.3.232")
 }
 
 java {

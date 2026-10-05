@@ -95,7 +95,7 @@ vanish:
 
 storage:
   info: '<prefix><gray>Storage: <state><newline>Last success (epoch ms): <success><newline>Last latency: <latency>ms<newline>Last error: <error></gray>'
-  database: '<prefix><gray>Live SQLite file: <yellow><path></yellow><newline>Open this file in DB Browser on the server host in read-only mode; refresh DB Browser to see new commits. Keep adm.sqlite-wal and adm.sqlite-shm beside it. ADM does not expose the file over the network.</gray>'
+  database: '<prefix><gray>Embedded H2 database file: <yellow><path></yellow><newline>Stop the server before copying or replacing this file. ADM does not expose the database over the network.</gray>'
   unavailable: '<prefix><red>Storage is unavailable. Check /adm storage-info and the server log.</red>'
   working: '<prefix><gray>Request queued.</gray>'
   login-denied: '<red>Login unavailable: administration storage is offline.</red>'

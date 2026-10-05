@@ -111,7 +111,7 @@ class AuditLogService(plugin: JavaPlugin, modules: ModuleManager, permissions: P
         val parameters = mutableListOf<Any?>()
         listOf("staff_name", "target_name", "action").forEachIndexed { index, column ->
             if (filters[index] != "*") {
-                conditions.add("$column=? COLLATE NOCASE")
+                conditions.add("$column=?")
                 parameters.add(filters[index])
             }
         }

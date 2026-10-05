@@ -33,7 +33,7 @@ import com.tecnor.adm.settings.ConfigService
 import com.tecnor.adm.settings.SettingsLoader
 import com.tecnor.adm.staff.StaffToolsService
 import com.tecnor.adm.storage.LoginRecorder
-import com.tecnor.adm.storage.SqliteStorage
+import com.tecnor.adm.storage.EmbeddedStorage
 import net.luckperms.api.LuckPermsProvider
 import org.bukkit.event.HandlerList
 import org.bukkit.plugin.ServicePriority
@@ -57,7 +57,7 @@ class ADMPlugin : JavaPlugin() {
     private lateinit var permissions: PermissionService
     private lateinit var hierarchy: HierarchyService
     private lateinit var enderChestProviders: EnderChestProviderRegistry
-    private lateinit var storage: SqliteStorage
+    private lateinit var storage: EmbeddedStorage
     private lateinit var audit: DatabaseAuditSink
 
     override fun onEnable() {
@@ -79,7 +79,7 @@ class ADMPlugin : JavaPlugin() {
         adminService = AdminService(this, pluginMeta.version, settings, moduleManager, messages, executor)
         permissions = PermissionService(settings)
         hierarchy = HierarchyService()
-        storage = SqliteStorage(this)
+        storage = EmbeddedStorage(this)
         server.servicesManager.register(Storage::class.java, storage, this, ServicePriority.Normal)
         server.pluginManager.registerEvents(LoginRecorder(storage, settings, hierarchy), this)
         adminService.setStorage(storage)
@@ -132,7 +132,7 @@ class ADMPlugin : JavaPlugin() {
         storage.ready.thenAccept { available -> scheduler.main(Runnable {
             if (!available) {
                 for (module in listOf("punishments", "staff-tools", "reports", "audit")) {
-                    if (moduleManager.isEnabled(module)) moduleManager.fail(module, IllegalStateException("SQLite driver or connection unavailable: ${storage.health.lastError}"))
+                    if (moduleManager.isEnabled(module)) moduleManager.fail(module, IllegalStateException("Embedded database connection unavailable: ${storage.health.lastError}"))
                 }
             }
         }) }

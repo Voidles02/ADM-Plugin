@@ -21,8 +21,10 @@ class LoginRecorder(private val storage: Storage, private val settings: ConfigSe
         val now = System.currentTimeMillis()
         try {
             storage.submit { db -> db.transaction {
-                db.update("INSERT INTO players(uuid,name,ip,first_login,last_login) VALUES(?,?,?,?,?) ON CONFLICT(uuid) DO UPDATE SET name=excluded.name,ip=excluded.ip,last_login=excluded.last_login", id, name, ip, now, now)
-                db.update("INSERT INTO names(name,uuid,first_seen,last_seen) VALUES(?,?,?,?) ON CONFLICT(name,uuid) DO UPDATE SET last_seen=excluded.last_seen", name, id, now, now)
+                if (db.update("UPDATE players SET name=?,ip=?,last_login=? WHERE uuid=?", name, ip, now, id) == 0)
+                    db.update("INSERT INTO players(uuid,name,ip,first_login,last_login) VALUES(?,?,?,?,?)", id, name, ip, now, now)
+                if (db.update("UPDATE names SET last_seen=? WHERE name=? AND uuid=?", now, name, id) == 0)
+                    db.update("INSERT INTO names(name,uuid,first_seen,last_seen) VALUES(?,?,?,?)", name, id, now, now)
             } }.get(8, TimeUnit.SECONDS)
         } catch (_: Exception) {
             if (settings.current().loginFallback() == "deny") event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER,
@@ -36,6 +38,6 @@ class LoginRecorder(private val storage: Storage, private val settings: ConfigSe
         val id = player.uniqueId.toString()
         val rank = hierarchy.rank(player)
         val immune = player.hasPermission("adm.immune")
-        storage.submit { it.update("UPDATE players SET rank=?,immune=? WHERE uuid=?", rank, immune, id) }
+        storage.submit { it.update("UPDATE players SET player_rank=?,immune=? WHERE uuid=?", rank, immune, id) }
     }
 }

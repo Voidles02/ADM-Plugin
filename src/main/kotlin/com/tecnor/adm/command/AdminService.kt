@@ -55,7 +55,7 @@ class AdminService(
 
     fun database(actor: CommandActor): ActionResult {
         check(actor, "adm.admin.database")?.let { return it }
-        val path = plugin.dataFolder.toPath().resolve("adm.sqlite").toAbsolutePath().normalize()
+        val path = plugin.dataFolder.toPath().resolve("adm.mv.db").toAbsolutePath().normalize()
         permissions.record(actor, "database")
         return ActionResult.success("storage.database", mapOf("path" to path.toString()))
     }

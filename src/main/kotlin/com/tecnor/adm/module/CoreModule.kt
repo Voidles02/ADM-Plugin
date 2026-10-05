@@ -60,6 +60,7 @@ class CoreModule(
                         .then(Commands.literal("debug").executes { execute(it.source, service::debug) })
                     event.registrar().register(root.build(), "ADM administration commands", commands.aliases())
                     commandsRegistered = true
+                    plugin.logger.info("Registered /${commands.name()} and aliases ${commands.aliases().joinToString()}; database subcommand is available.")
                 } catch (failure: Throwable) {
                     modules.fail(id(), failure)
                 }

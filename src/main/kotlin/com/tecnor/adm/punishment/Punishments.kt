@@ -8,6 +8,7 @@ import com.tecnor.adm.storage.transaction
 import com.tecnor.adm.storage.update
 import java.sql.Connection
 import java.sql.ResultSet
+import java.sql.Statement
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -48,14 +49,25 @@ class Punishments(val storage: Storage) {
             if (type in listOf("MUTE", "BAN", "IPBAN")) {
                 db.update("UPDATE punishments SET revoked=? WHERE target=? AND kind=? AND revoked IS NULL", now, target.id.toString(), type)
             }
-            db.update("INSERT INTO punishments(target,target_name,ip,kind,reason,staff,staff_name,created,expires) VALUES(?,?,?,?,?,?,?,?,?)",
-                target.id.toString(), target.name, if (type == "IPBAN") target.ip else null, type, reason,
-                actor.playerId()?.toString() ?: "CONSOLE", actor.name(), now, expires)
-            actions.add(db.query("SELECT * FROM punishments WHERE id=last_insert_rowid()") { it.punishment() }.first())
+            val id = db.prepareStatement(
+                "INSERT INTO punishments(target,target_name,ip,kind,reason,staff,staff_name,created,expires) VALUES(?,?,?,?,?,?,?,?,?)",
+                Statement.RETURN_GENERATED_KEYS
+            ).use { statement ->
+                listOf(target.id.toString(), target.name, if (type == "IPBAN") target.ip else null, type, reason,
+                    actor.playerId()?.toString() ?: "CONSOLE", actor.name(), now, expires).forEachIndexed { index, value ->
+                    statement.setObject(index + 1, value)
+                }
+                statement.executeUpdate()
+                statement.generatedKeys.use { keys ->
+                    check(keys.next()) { "Punishment insert did not return an ID" }
+                    keys.getLong(1)
+                }
+            }
+            actions.add(db.query("SELECT * FROM punishments WHERE id=?", id) { it.punishment() }.first())
         }
         add(kind, duration)
         if (kind == "WARN") {
-            val count = db.query("SELECT COUNT(*) FROM punishments WHERE target=? AND kind='WARN' AND cleared=0", target.id.toString()) { it.getInt(1) }.first()
+            val count = db.query("SELECT COUNT(*) FROM punishments WHERE target=? AND kind='WARN' AND cleared=FALSE", target.id.toString()) { it.getInt(1) }.first()
             escalations.firstOrNull { it.count == count }?.let { add(it.kind, it.duration) }
         }
         actions

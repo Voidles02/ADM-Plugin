@@ -9,6 +9,7 @@ import com.tecnor.adm.punishment.PunishmentService
 import com.tecnor.adm.service.*
 import com.tecnor.adm.settings.SettingsSnapshot
 import com.tecnor.adm.staff.StaffToolsService
+import com.tecnor.adm.storage.update
 import io.papermc.paper.event.player.AsyncChatEvent
 import net.kyori.adventure.text.minimessage.MiniMessage
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
@@ -185,7 +186,9 @@ class HudManager(
         val id = session.viewer.toString()
         val preferences = session.preferences.copy()
         val saved = storage.submit { db ->
-            db.prepareStatement("INSERT INTO hud_preferences(uuid,sounds,confirmations,compact) VALUES(?,?,?,?) ON CONFLICT(uuid) DO UPDATE SET sounds=excluded.sounds,confirmations=excluded.confirmations,compact=excluded.compact").use { statement ->
+            val updated = db.update("UPDATE hud_preferences SET sounds=?,confirmations=?,compact=? WHERE uuid=?",
+                preferences.sounds, preferences.confirmations, preferences.compact, id)
+            if (updated == 0) db.prepareStatement("INSERT INTO hud_preferences(uuid,sounds,confirmations,compact) VALUES(?,?,?,?)").use { statement ->
                 statement.setString(1, id); statement.setBoolean(2, preferences.sounds)
                 statement.setBoolean(3, preferences.confirmations); statement.setBoolean(4, preferences.compact)
                 statement.executeUpdate()

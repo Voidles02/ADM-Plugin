@@ -67,4 +67,4 @@ fun <T> Connection.transaction(work: (Connection) -> T): T {
 }
 
 fun ResultSet.storedPlayer() = StoredPlayer(UUID.fromString(getString("uuid")), getString("name"),
-    getString("ip"), getLong("first_login"), getLong("last_login"), getInt("rank"), getBoolean("immune"))
+    getString("ip"), getLong("first_login"), getLong("last_login"), getInt("player_rank"), getBoolean("immune"))
