@@ -16,7 +16,7 @@ object SettingsLoader {
     private val moduleIds = listOf("core", "player-tools", "teleport", "tpa", "information", "chat", "anticheat", "inventory", "vanish",
         "punishments", "staff-chat", "staff-tools", "reports", "audit")
     private val featureCommandNames = setOf(
-        "adm-connect", "anticheat", "announcement", "annoucement", "broadcast", "clearchat", "mutechat", "slowmode", "sudo",
+        "adm-connect", "anticheat", "announcement", "announce", "annoucement", "broadcast", "clearchat", "mutechat", "slowmode", "sudo",
         "near", "ping", "list", "whois", "seen", "endersee", "enderedit", "invsee", "gamemode", "gm", "gmc", "gms",
         "gma", "gmsp", "fly", "speed", "god", "heal", "feed", "repair", "clear", "report", "reports", "staffchat", "sc",
         "spy", "tp", "tphere", "tpall", "tppos", "back", "top", "tpa", "tpaccept", "tpdeny",

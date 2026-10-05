@@ -1,8 +1,8 @@
 # ADM — Advanced Admin Management
 
 Author: **voidles02**  
-Version: **0.10.0-stage12**  
-Stage: **12 — TPA, integrations and stability updates**
+Version: **0.11.0-stage13**  
+Stage: **13 — TPA aliases and LuckPerms settings**
 
 ## Installation
 
@@ -141,8 +141,8 @@ ADM assigns weights 10, 50, and 100 to the default Moderator, Admin, and Owner g
 
 | Group | Weight | Permissions and abilities |
 | --- | ---: | --- |
-| `moderator` | 10 | `adm.mod.*`, vanish level 1, moderation/report/vanish HUD pages, and common moderation vanilla commands (kick, teleport, gamemode, effect, clear) |
-| `admin` | 50 | Inherits Moderator; adds `adm.admin.*` including anticheat controls, vanish level 2, all HUD pages, and common world-management vanilla commands |
+| `moderator` | 10 | `adm.mod.*`, `adm.tpa.use`, vanish level 1, moderation/report/vanish HUD pages, and common moderation vanilla commands (kick, teleport, gamemode, effect, clear) |
+| `admin` | 50 | Inherits Moderator; adds `adm.admin.*` and `adm.admin.tpa.configure`, including anticheat controls, vanish level 2, all HUD pages, and common world-management vanilla commands |
 | `owner` | 100 | Inherits Admin; adds `adm.*`, hierarchy bypass/immunity, vanish level 3, and `minecraft.command.*` plus `bukkit.command.*` for vanilla/Bukkit commands |
 
 Owner's command wildcards do not grant `*` across unrelated LuckPerms plugins. Group setup does not grant operator status. Assign players explicitly with LuckPerms (console examples):
@@ -414,7 +414,7 @@ dependencies:
 
 1. Build through Kodari's Compile window; verify a successful Java 21 build. No compilation or server execution is asserted by this checklist.
 2. Start on Paper 1.21.x without LuckPerms; confirm YAML generation and all configured module statuses. Repeat with LuckPerms; verify `moderator`, `admin`, and `owner` are created with weights and inheritance, but no users are assigned automatically. Assign test users and verify each role's ADM and vanilla command permissions. Repeat with every module false: no feature commands should activate; infrastructure still handles storage fallback.
-3. Test `/adm` and its alias, reload/version/debug/storage-info/database, permission denial, and console execution. Confirm author `voidles02` and Stage 9 version. Debug toggles diagnostic logging ON/OFF while still listing module states.
+3. Test `/adm` and its alias, reload/version/debug/storage-info/database, permission denial, and console execution. Confirm author `voidles02` and Stage 13 version. Debug toggles diagnostic logging ON/OFF while still listing module states.
 4. Test every game mode, `/gm`, all four shortcuts, fly, both speed types including 0/10, god damage protection, heal/feed, repair hand/all including armor/offhand, and clear including armor/offhand. Test self, online others, unknown players, extra arguments, and console with explicit targets.
 5. Give base tool permission but not `.others`: others must be denied. Add `.others` and test heal/feed/god/clear on lower, equal, higher, and immune non-op targets. Equal/higher and immune must be denied. Repeat with tier markers without LuckPerms, then primary group weights with LuckPerms; verify a live LP user recalculation updates rank. Test console and hierarchy bypass.
 6. Test tp/tphere/tpall, absolute tppos with/without world, invalid world, NaN/out-of-bounds coordinates, and unloaded destination chunks. Confirm main-thread chunk loading is not initiated by ADM. Cancel a teleport from another plugin and check its failure message.

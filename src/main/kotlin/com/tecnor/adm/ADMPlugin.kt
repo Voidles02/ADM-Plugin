@@ -20,6 +20,7 @@ import com.tecnor.adm.message.MessageService
 import com.tecnor.adm.module.CoreModule
 import com.tecnor.adm.module.FeatureModule
 import com.tecnor.adm.module.ModuleManager
+import com.tecnor.adm.module.ModuleStatus
 import com.tecnor.adm.punishment.PunishmentEnforcement
 import com.tecnor.adm.punishment.PunishmentService
 import com.tecnor.adm.punishment.Punishments
@@ -147,6 +148,7 @@ class ADMPlugin : JavaPlugin() {
         val hud = HudManager(this, moduleManager, messages, storage, adminService, enderChestProviders)
         moduleManager.register(FeatureModule(this, moduleManager, messages, hud))
         moduleManager.enableConfigured(initial)
+        logStartupSummary()
         storage.ready.thenAccept { available -> scheduler.main(Runnable {
             if (!available) {
                 for (module in listOf("punishments", "staff-tools", "reports", "audit")) {
@@ -154,6 +156,28 @@ class ADMPlugin : JavaPlugin() {
                 }
             }
         }) }
+    }
+
+    private fun logStartupSummary() {
+        val statuses = moduleManager.statuses().values
+        val enabled = statuses.count { it == ModuleStatus.ENABLED }
+        val disabled = statuses.count { it == ModuleStatus.DISABLED }
+        val failed = statuses.count { it == ModuleStatus.FAILED }
+        val barWidth = 12
+        val filled = if (statuses.isEmpty()) 0 else enabled * barWidth / statuses.size
+        val moduleBar = "█".repeat(filled) + "░".repeat(barWidth - filled)
+        val version = pluginMeta.version
+        val minecraftVersion = server.minecraftVersion
+        val players = "${server.onlinePlayers.size}/${server.maxPlayers}"
+
+        logger.info("╭──────────────────────────────────────────────────╮")
+        logger.info("│            ADM · ADVANCED ADMIN MANAGEMENT        │")
+        logger.info("├──────────────────────────────────────────────────┤")
+        logger.info("│ Version  $version  ·  Server  $minecraftVersion")
+        logger.info("│ Modules  [$moduleBar]  $enabled/${statuses.size} enabled")
+        logger.info("│ Status   $failed failed  ·  $disabled disabled")
+        logger.info("│ Online   $players players  ·  Java ${Runtime.version().feature()}")
+        logger.info("╰──────────────────────────────────────────────────╯")
     }
 
     override fun onDisable() {

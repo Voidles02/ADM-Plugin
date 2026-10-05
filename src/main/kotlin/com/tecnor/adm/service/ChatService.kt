@@ -34,7 +34,7 @@ class ChatService(
     private val hierarchy: HierarchyService
 ) : ServiceSupport(plugin, modules, permissions), Listener {
     override val id = "chat"
-    override val commands = listOf(CommandSpec("announcement", listOf("annoucement"))) +
+    override val commands = listOf(CommandSpec("announcement", listOf("announce", "annoucement"))) +
         listOf("broadcast", "clearchat", "mutechat", "slowmode", "sudo").map { CommandSpec(it) }
     private class Timestamp(var last: Long = 0)
     private val timestamps = ConcurrentHashMap<UUID, Timestamp>()

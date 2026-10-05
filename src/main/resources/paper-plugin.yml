@@ -1,7 +1,7 @@
 name: ADM
 version: '${version}'
 main: com.tecnor.adm.ADMPlugin
-description: Advanced Admin Management - Stage 12 TPA, integrations and stability updates
+description: Advanced Admin Management - Stage 13 TPA aliases and LuckPerms settings
 api-version: '1.21'
 authors: [voidles02]
 

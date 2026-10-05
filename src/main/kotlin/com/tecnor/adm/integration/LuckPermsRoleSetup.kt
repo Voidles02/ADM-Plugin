@@ -25,6 +25,7 @@ class LuckPermsRoleSetup(
         permissions = listOf(
             "adm.tier.mod",
             "adm.mod.*",
+            "adm.tpa.use",
             "adm.admin.vanish",
             "adm.admin.vanish.see",
             "adm.vanish.level.1",
@@ -50,6 +51,7 @@ class LuckPermsRoleSetup(
         permissions = listOf(
             "adm.tier.admin",
             "adm.admin.*",
+            "adm.admin.tpa.configure",
             "adm.admin.anticheat.*",
             "adm.hud.*",
             "adm.vanish.level.2",
