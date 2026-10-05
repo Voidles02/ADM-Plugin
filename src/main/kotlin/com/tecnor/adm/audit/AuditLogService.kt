@@ -1,6 +1,7 @@
-package com.tecnor.adm.service
+package com.tecnor.adm.audit
 
 import com.tecnor.adm.api.*
+import com.tecnor.adm.service.ServiceSupport
 import com.tecnor.adm.core.PermissionService
 import com.tecnor.adm.core.SchedulerHelper
 import com.tecnor.adm.inventory.StaffPageHolder
@@ -84,8 +85,9 @@ class AuditLogService(plugin: JavaPlugin, modules: ModuleManager, permissions: P
                     }.ifBlank { "No entries" })))
                 return@Runnable
             }
-            if (requests[actor.playerId()] != ticket) return@Runnable
-            val player = Bukkit.getPlayer(actor.playerId()) ?: return@Runnable
+            val id = actor.playerId() ?: return@Runnable
+            if (requests[id] != ticket) return@Runnable
+            val player = Bukkit.getPlayer(id) ?: return@Runnable
             val holder = StaffPageHolder("audit", player.uniqueId, result.page, result.pages, result.rows.map { it.id }, filters)
             val inventory = holder.create(messages.render(ActionResult.success("audit.title", mapOf("page" to result.page.toString(), "pages" to result.pages.toString()))))
             result.rows.forEachIndexed { index, entry -> inventory.setItem(index, ItemStack(Material.PAPER).also { item -> item.editMeta { meta ->

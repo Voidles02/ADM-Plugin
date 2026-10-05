@@ -15,11 +15,11 @@ class PermissionService(private val config: ConfigService) {
         if (actor.hasPermission(permission)) null else ActionResult.failure("command.no-permission")
 
     fun cooldown(actor: CommandActor, command: String): ActionResult? {
-        if (actor.isConsole) return null
+        val id = actor.playerId() ?: return null
         val seconds = config.current().integer("cooldowns.$command", 0)
         if (seconds == 0) return null
         val now = System.nanoTime()
-        val previous = cooldowns[actor.playerId()]?.get(command) ?: return null
+        val previous = cooldowns[id]?.get(command) ?: return null
         val remaining = seconds * 1_000_000_000L - (now - previous)
         return if (remaining <= 0) null else ActionResult.failure(
             "command.cooldown", mapOf("seconds" to ceil(remaining / 1_000_000_000.0).toLong().toString())
@@ -27,9 +27,8 @@ class PermissionService(private val config: ConfigService) {
     }
 
     fun record(actor: CommandActor, command: String) {
-        if (!actor.isConsole) {
-            cooldowns.computeIfAbsent(actor.playerId()) { ConcurrentHashMap() }[command] = System.nanoTime()
-        }
+        val id = actor.playerId() ?: return
+        cooldowns.computeIfAbsent(id) { ConcurrentHashMap() }[command] = System.nanoTime()
     }
 
     fun forget(id: UUID) { cooldowns.remove(id) }

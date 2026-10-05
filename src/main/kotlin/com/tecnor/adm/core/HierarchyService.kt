@@ -29,7 +29,7 @@ class HierarchyService {
 
     fun check(actor: CommandActor, target: Player): ActionResult? {
         if (actor.isConsole || actor.playerId() == target.uniqueId || actor.hasPermission("adm.bypass.hierarchy")) return null
-        val player = Bukkit.getPlayer(actor.playerId()) ?: return ActionResult.failure("command.player-only")
+        val player = actor.playerId()?.let(Bukkit::getPlayer) ?: return ActionResult.failure("command.player-only")
         return if (target.hasPermission("adm.immune") || rank(player) <= rank(target)) {
             ActionResult.failure("command.hierarchy", mapOf("target" to target.name))
         } else null

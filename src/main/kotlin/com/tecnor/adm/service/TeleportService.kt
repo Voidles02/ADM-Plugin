@@ -41,7 +41,7 @@ class TeleportService(
         check(actor, command, node)?.let { return it }
         val args = words(arguments)
         if (actor.isConsole) return ActionResult.failure("command.player-only")
-        val player = Bukkit.getPlayer(actor.playerId()) ?: return ActionResult.failure("command.player-only")
+        val player = actor.playerId()?.let(Bukkit::getPlayer) ?: return ActionResult.failure("command.player-only")
         when (command) {
             "tp", "tphere" -> {
                 if (args.size != 1) return usage("/$command <player>")

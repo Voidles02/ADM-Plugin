@@ -1,6 +1,7 @@
-package com.tecnor.adm.service
+package com.tecnor.adm.punishment
 
 import com.tecnor.adm.api.*
+import com.tecnor.adm.service.ServiceSupport
 import com.tecnor.adm.core.HierarchyService
 import com.tecnor.adm.core.PermissionService
 import com.tecnor.adm.core.SchedulerHelper
@@ -137,7 +138,7 @@ class PunishmentService(plugin: JavaPlugin, modules: ModuleManager, permissions:
 
     private fun offlineHierarchy(actor: CommandActor, target: StoredPlayer): ActionResult? {
         if (actor.isConsole || actor.playerId() == target.id || actor.hasPermission("adm.bypass.hierarchy")) return null
-        val staff = Bukkit.getPlayer(actor.playerId()) ?: return ActionResult.failure("command.player-only")
+        val staff = actor.playerId()?.let(Bukkit::getPlayer) ?: return ActionResult.failure("command.player-only")
         val rank = hierarchy.provider?.metadata(target.id)?.weight ?: target.rank
         return if (target.immune || hierarchy.rank(staff) <= rank) ActionResult.failure("command.hierarchy", mapOf("target" to target.name)) else null
     }

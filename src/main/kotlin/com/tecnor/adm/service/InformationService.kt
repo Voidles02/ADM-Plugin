@@ -69,14 +69,14 @@ class InformationService(
             "ping" -> {
                 if (args.size > 1) return usage("/ping [player]")
                 if (args.isEmpty() && actor.isConsole) return ActionResult.failure("command.player-only")
-                val target = if (args.isEmpty()) Bukkit.getPlayer(actor.playerId()) else Bukkit.getPlayerExact(args[0])
+                val target = if (args.isEmpty()) actor.playerId()?.let(Bukkit::getPlayer) else Bukkit.getPlayerExact(args[0])
                 if (target == null) return ActionResult.failure("command.player-not-found", mapOf("target" to (args.firstOrNull() ?: actor.name())))
                 return done(actor, command, "information.ping", mapOf("target" to target.name, "ping" to target.ping.toString()))
             }
             "near" -> {
                 if (args.size > 1) return usage("/near [radius]")
                 if (actor.isConsole) return ActionResult.failure("command.player-only")
-                val player = Bukkit.getPlayer(actor.playerId()) ?: return ActionResult.failure("command.player-only")
+                val player = actor.playerId()?.let(Bukkit::getPlayer) ?: return ActionResult.failure("command.player-only")
                 val snapshot = config.current()
                 val max = snapshot.integer("near.max-radius", 1000)
                 val radius = if (args.isEmpty()) snapshot.integer("near.default-radius", 100) else

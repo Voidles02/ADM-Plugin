@@ -5,8 +5,10 @@ import com.tecnor.adm.api.*
 import com.tecnor.adm.command.AdminService
 import com.tecnor.adm.message.MessageService
 import com.tecnor.adm.module.*
+import com.tecnor.adm.punishment.PunishmentService
 import com.tecnor.adm.service.*
 import com.tecnor.adm.settings.SettingsSnapshot
+import com.tecnor.adm.staff.StaffToolsService
 import io.papermc.paper.event.player.AsyncChatEvent
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
 import org.bukkit.Bukkit

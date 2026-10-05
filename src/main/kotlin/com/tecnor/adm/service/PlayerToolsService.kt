@@ -88,7 +88,7 @@ class PlayerToolsService(
         }
         val target = if (targetName == null) {
             if (actor.isConsole) return ActionResult.failure("command.player-only")
-            Bukkit.getPlayer(actor.playerId())
+            actor.playerId()?.let(Bukkit::getPlayer)
         } else Bukkit.getPlayerExact(targetName)
         if (target == null) return ActionResult.failure("command.player-not-found", mapOf("target" to (targetName ?: actor.name())))
         if (actor.playerId() != target.uniqueId) {
@@ -139,7 +139,7 @@ class PlayerToolsService(
     private fun repair(actor: CommandActor, args: List<String>): ActionResult {
         if (args.size > 1 || (args.isNotEmpty() && args[0].lowercase() !in listOf("hand", "all"))) return usage("/repair [hand|all]")
         if (actor.isConsole) return ActionResult.failure("command.player-only")
-        val player = Bukkit.getPlayer(actor.playerId()) ?: return ActionResult.failure("command.player-only")
+        val player = actor.playerId()?.let(Bukkit::getPlayer) ?: return ActionResult.failure("command.player-only")
         val all = args.firstOrNull()?.equals("all", true) == true
         if (all) permissions.check(actor, "adm.admin.repair.all")?.let { return it }
         val count = if (all) player.inventory.contents.count { repairItem(it) }

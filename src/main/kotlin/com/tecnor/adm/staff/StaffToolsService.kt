@@ -1,6 +1,11 @@
-package com.tecnor.adm.service
+package com.tecnor.adm.staff
 
 import com.tecnor.adm.api.*
+import com.tecnor.adm.service.ServiceSupport
+import com.tecnor.adm.service.VanishService
+import com.tecnor.adm.service.InventoryToolsService
+import com.tecnor.adm.service.InformationService
+import com.tecnor.adm.service.PlayerToolsService
 import com.tecnor.adm.core.HierarchyService
 import com.tecnor.adm.core.PermissionService
 import com.tecnor.adm.core.SchedulerHelper
@@ -55,10 +60,10 @@ class StaffToolsService(plugin: JavaPlugin, modules: ModuleManager, permissions:
     private val scheduler = SchedulerHelper(plugin)
     private val toolKey = NamespacedKey(plugin, "staff_tool")
 
-    fun isProtected(id: UUID) = id in sessions || id in pending || id in restoring
+    fun isProtected(id: UUID) = sessions.containsKey(id) || id in pending || id in restoring
 
     fun isFrozen(id: UUID) = id in frozen
-    fun isStaffMode(id: UUID) = id in sessions
+    fun isStaffMode(id: UUID) = sessions.containsKey(id)
     fun pendingCount() = pending.size + restoring.size + freezePending.size
 
     override fun enable() {
@@ -113,7 +118,7 @@ class StaffToolsService(plugin: JavaPlugin, modules: ModuleManager, permissions:
         if (arguments.isNotBlank()) return usage("/staffmode")
         val player = actor.playerId()?.let(Bukkit::getPlayer) ?: return ActionResult.failure("command.player-only")
         if (player.uniqueId in pending || player.uniqueId in restoring) return ActionResult.failure("staff.busy")
-        if (player.uniqueId in sessions) {
+        if (sessions.containsKey(player.uniqueId)) {
             restore(player, false)
             return ActionResult.success("storage.working")
         }
@@ -235,7 +240,7 @@ class StaffToolsService(plugin: JavaPlugin, modules: ModuleManager, permissions:
 
     private fun isFrozen(player: Player) = player.uniqueId in frozen && !player.hasPermission("adm.bypass.freeze")
     private fun restricted(player: Player) = player.uniqueId in pending || player.uniqueId in restoring
-    private fun staff(player: Player) = player.uniqueId in sessions || restricted(player)
+    private fun staff(player: Player) = sessions.containsKey(player.uniqueId) || restricted(player)
 
     private fun updateTask() {
         val online = Bukkit.getOnlinePlayers().any(::isFrozen)
@@ -269,7 +274,7 @@ class StaffToolsService(plugin: JavaPlugin, modules: ModuleManager, permissions:
             data.second?.let { recovery[id] = it }
         } catch (failure: Exception) {
             storage.reportFailure(failure)
-            if (settings.current().loginFallback() == "deny" || id in sessions || id in recovery) event.disallow(
+            if (settings.current().loginFallback() == "deny" || sessions.containsKey(id) || recovery.containsKey(id)) event.disallow(
                 AsyncPlayerPreLoginEvent.Result.KICK_OTHER, messages.render(ActionResult.failure("storage.login-denied")))
         }
     }

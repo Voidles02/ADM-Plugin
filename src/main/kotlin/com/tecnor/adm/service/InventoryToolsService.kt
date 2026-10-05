@@ -14,6 +14,7 @@ import com.tecnor.adm.message.MessageService
 import com.tecnor.adm.module.CommandSpec
 import com.tecnor.adm.module.ModuleManager
 import com.tecnor.adm.settings.SettingsSnapshot
+import com.tecnor.adm.staff.StaffToolsService
 import org.bukkit.Bukkit
 import org.bukkit.OfflinePlayer
 import org.bukkit.entity.Player
