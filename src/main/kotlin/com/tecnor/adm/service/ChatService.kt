@@ -83,8 +83,10 @@ class ChatService(
             "clearchat" -> {
                 if (arguments.isNotBlank()) return usage("/clearchat")
                 val line = messages.render(ActionResult.success("chat.clear-line"))
-                repeat(config.current().integer("clearchat.lines", 100)) {
-                    Bukkit.getOnlinePlayers().forEach { it.sendMessage(line) }
+                val players = Bukkit.getOnlinePlayers()
+                val lines = config.current().integer("clearchat.lines", 100).coerceIn(1, 100)
+                repeat(if (players.isEmpty()) 0 else lines) {
+                    players.forEach { it.sendMessage(line) }
                 }
                 announce("chat.cleared", mapOf("actor" to actor.name()))
                 return done(actor, command, "chat.clear-success")

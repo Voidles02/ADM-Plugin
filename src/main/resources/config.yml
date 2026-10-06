@@ -13,6 +13,7 @@ modules:
   staff-tools: true
   reports: true
   audit: true
+  world-control: true
 
 commands:
   name: adm
@@ -57,6 +58,10 @@ cooldowns:
   vanish: 0
   whois: 0
   seen: 0
+  day: 0
+  noon: 0
+  night: 0
+  weather: 0
 
 slowmode:
   min-seconds: 1

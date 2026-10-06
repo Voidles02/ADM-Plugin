@@ -7,8 +7,12 @@ import com.tecnor.adm.api.CommandActor
 import com.tecnor.adm.api.EnderChestLease
 import com.tecnor.adm.api.EnderChestProvider
 import com.tecnor.adm.api.EnderChestProviderRegistry
+import com.tecnor.adm.api.ScopedStorage
+import com.tecnor.adm.api.Storage
 import com.tecnor.adm.core.PermissionService
+import com.tecnor.adm.core.SchedulerHelper
 import com.tecnor.adm.inventory.InvseeView
+import com.tecnor.adm.inventory.OfflineInventoryStore
 import com.tecnor.adm.inventory.VanillaEnderChestProvider
 import com.tecnor.adm.message.MessageService
 import com.tecnor.adm.module.CommandSpec
@@ -28,6 +32,7 @@ import org.bukkit.event.inventory.InventoryCloseEvent
 import org.bukkit.event.inventory.InventoryDragEvent
 import org.bukkit.event.inventory.InventoryOpenEvent
 import org.bukkit.event.player.PlayerDropItemEvent
+import org.bukkit.event.player.PlayerJoinEvent
 import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.event.server.PluginDisableEvent
 import org.bukkit.inventory.Inventory
@@ -57,6 +62,10 @@ class InventoryToolsService(
         val editable: Boolean,
         val provider: EnderChestProvider?,
         val lease: EnderChestLease?,
+        val kind: String = if (provider != null) "ender-chest" else "inventory",
+        val editPermission: String = if (provider != null) "adm.admin.enderedit" else "adm.admin.invsee.edit",
+        val selfEdit: Boolean = false,
+        val offlineSnapshot: OfflineInventoryStore.Snapshot? = null,
         val invsee: InvseeView? = null,
         var previous: List<String> = emptyList(),
         val source: String = com.tecnor.adm.api.ActionOrigin.current(),
@@ -65,6 +74,8 @@ class InventoryToolsService(
 
     private val sessions = mutableMapOf<UUID, Session>()
     private val locks = mutableMapOf<UUID, UUID>()
+    private val offlineInventories = OfflineInventoryStore(plugin)
+    private val scheduler = SchedulerHelper(plugin)
     private var refreshTask: BukkitTask? = null
 
     fun isLocked(target: UUID) = target in locks
@@ -90,7 +101,10 @@ class InventoryToolsService(
     }
 
     override fun disable() {
-        try { closeAll() } finally {
+        try {
+            closeAll()
+            plugin.server.onlinePlayers.toList().forEach(offlineInventories::capture)
+        } finally {
             refreshTask?.cancel()
             providers.unregisterAll(plugin)
             plugin.server.servicesManager.unregister(EnderChestProviderRegistry::class.java, providers)
@@ -108,13 +122,17 @@ class InventoryToolsService(
         val args = words(arguments)
         if (args.size != 1) return usage("/$command <player>")
         val staff = actor.playerId()?.let(Bukkit::getPlayer) ?: return ActionResult.failure("command.player-only")
-        val target = findTarget(args.single()) ?: return ActionResult.failure("command.player-not-found", mapOf("target" to args.single()))
+        val target = findTarget(args.single()) ?: return if (resolveStoredTarget(actor, command, args.single())) {
+            ActionResult.success("storage.working")
+        } else ActionResult.failure("command.player-not-found", mapOf("target" to args.single()))
         if (command == "invsee") return openInvsee(actor, staff, target)
         val editable = command == "enderedit"
         close(sessions[staff.uniqueId])
-        if (target.uniqueId in locks) return ActionResult.failure("inventory.locked")
-        val provider = providers.select(target.uniqueId) ?: return ActionResult.failure("inventory.provider-unavailable")
-        if (!target.isOnline && !provider.supportsOffline) return ActionResult.failure("inventory.offline-ender")
+        if (locks[target.uniqueId]?.let { it != staff.uniqueId } == true) return ActionResult.failure("inventory.locked")
+        val provider = if (target.isOnline) providers.select(target.uniqueId) else
+            providers.providers().firstOrNull { it.supportsOffline && it.supports(target.uniqueId) }
+        if (!target.isOnline && provider == null) return openOfflineEnder(actor, staff, target, editable)
+        if (provider == null) return ActionResult.failure("inventory.provider-unavailable")
         if (editable) locks[target.uniqueId] = staff.uniqueId
         var lease: EnderChestLease? = null
         try {
@@ -158,17 +176,44 @@ class InventoryToolsService(
     }
 
     private fun openInvsee(actor: CommandActor, staff: Player, offline: OfflinePlayer): ActionResult {
-        val target = offline.player ?: return ActionResult.failure("inventory.offline-invsee")
+        val target = offline.player
+        if (target == null) {
+            val snapshot = offlineInventories.load(offline.uniqueId)
+                ?: return ActionResult.failure("inventory.offline-data-unavailable")
+            val protection = plugin.server.servicesManager.load(StaffToolsService::class.java)
+            val editable = actor.hasPermission("adm.admin.invsee.edit") && protection?.isProtected(staff.uniqueId) != true
+            close(sessions[staff.uniqueId])
+            val targetName = offline.name ?: offline.uniqueId.toString()
+            val inventory = Bukkit.createInventory(null, 45, messages.render(ActionResult.success("inventory.title",
+                mapOf("target" to targetName, "type" to "Inventory"))))
+            snapshot.inventory.take(41).forEachIndexed { index, item -> inventory.setItem(index, item?.clone()) }
+            val session = Session(staff, offline.uniqueId, targetName, inventory, editable, null, null,
+                kind = "inventory", offlineSnapshot = snapshot)
+            if (editable) session.previous = contents(session)
+            sessions[staff.uniqueId] = session
+            syncInvseeRefreshTask()
+            staff.closeInventory()
+            staff.openInventory(inventory)
+            if (staff.openInventory.topInventory != inventory) {
+                close(session)
+                return ActionResult.failure("inventory.open-failed")
+            }
+            audit(session, "access", mapOf("mode" to if (editable) "edit" else "read-only"))
+            return done(actor, "invsee", "inventory.opened", mapOf("target" to targetName,
+                "mode" to if (editable) "editable" else "read-only"))
+        }
         val protection = plugin.server.servicesManager.load(StaffToolsService::class.java)
         if (protection?.isProtected(target.uniqueId) == true) return ActionResult.failure("staff.inventory-locked")
-        val editable = actor.hasPermission("adm.admin.invsee.edit") && protection?.isProtected(staff.uniqueId) != true
-        if (editable && target.uniqueId == staff.uniqueId) return ActionResult.failure("inventory.self-edit")
+        val selfEdit = target.uniqueId == staff.uniqueId
+        val editable = (selfEdit || actor.hasPermission("adm.admin.invsee.edit")) &&
+            protection?.isProtected(staff.uniqueId) != true
         close(sessions[staff.uniqueId])
         val view = InvseeView(staff, target, messages.render(ActionResult.success("inventory.title",
             mapOf("target" to target.name, "type" to "Inventory"))))
         view.refresh()
         staff.closeInventory()
-        val session = Session(staff, target.uniqueId, target.name, view.inventory, editable, null, null, view)
+        val session = Session(staff, target.uniqueId, target.name, view.inventory, editable, null, null,
+            kind = "inventory", selfEdit = selfEdit, invsee = view)
         sessions[staff.uniqueId] = session
         syncInvseeRefreshTask()
         staff.openInventory(view.inventory)
@@ -181,9 +226,50 @@ class InventoryToolsService(
             "mode" to if (editable) "editable" else "read-only"))
     }
 
+    private fun openOfflineEnder(actor: CommandActor, staff: Player, target: OfflinePlayer, editable: Boolean): ActionResult {
+        val snapshot = offlineInventories.load(target.uniqueId)
+            ?: return ActionResult.failure("inventory.offline-data-unavailable")
+        val targetName = target.name ?: target.uniqueId.toString()
+        val inventory = Bukkit.createInventory(null, 27, messages.render(ActionResult.success("inventory.title",
+            mapOf("target" to targetName, "type" to "Ender Chest"))))
+        snapshot.enderChest.take(27).forEachIndexed { index, item -> inventory.setItem(index, item?.clone()) }
+        if (editable) locks[target.uniqueId] = staff.uniqueId
+        val session = Session(staff, target.uniqueId, targetName, inventory, editable, null, null,
+            kind = "ender-chest", editPermission = "adm.admin.enderedit", offlineSnapshot = snapshot)
+        if (editable) session.previous = contents(session)
+        sessions[staff.uniqueId] = session
+        staff.closeInventory()
+        staff.openInventory(inventory)
+        if (staff.openInventory.topInventory != inventory) {
+            close(session)
+            return ActionResult.failure("inventory.open-failed")
+        }
+        audit(session, "access", mapOf("mode" to if (editable) "edit" else "read-only", "provider" to "offline-cache"))
+        return done(actor, if (editable) "enderedit" else "endersee", "inventory.opened", mapOf("target" to targetName,
+            "mode" to if (editable) "editable" else "read-only"))
+    }
+
     private fun findTarget(input: String): OfflinePlayer? = Bukkit.getPlayerExact(input)
         ?: Bukkit.getOfflinePlayerIfCached(input)
         ?: runCatching { Bukkit.getOfflinePlayer(UUID.fromString(input)) }.getOrNull()
+
+    private fun resolveStoredTarget(actor: CommandActor, command: String, input: String): Boolean {
+        val storage = plugin.server.servicesManager.load(Storage::class.java) ?: return false
+        val scoped = ScopedStorage(storage, id)
+        if (scoped.health.state != "CONNECTED") return false
+        scoped.resolve(input).whenComplete { target, failure ->
+            scheduler.main(Runnable {
+                if (failure != null) {
+                    messages.send(actor, ActionResult.failure("storage.unavailable"))
+                } else if (target == null) {
+                    messages.send(actor, ActionResult.failure("command.player-not-found", mapOf("target" to input)))
+                } else {
+                    messages.send(actor, execute(actor, command, target.id.toString()))
+                }
+            })
+        }
+        return true
+    }
 
     fun closeTarget(id: UUID) {
         sessions.values.filter { it.target == id || it.staff.uniqueId == id }.toList().forEach { close(it) }
@@ -209,8 +295,8 @@ class InventoryToolsService(
         session.flushTask = null
         syncInvseeRefreshTask()
         try {
-            if (session.provider != null) recordChanges(session)
-            session.lease?.flush()
+            if (session.editable) recordChanges(session)
+            if (session.offlineSnapshot != null) saveOfflineSnapshot(session) else session.lease?.flush()
         } finally {
             try { session.lease?.close() } finally {
                 if (locks[session.target] == session.staff.uniqueId) locks.remove(session.target)
@@ -236,7 +322,7 @@ class InventoryToolsService(
         val session = sessions[event.whoClicked.uniqueId] ?: return
         if (event.view.topInventory != session.inventory) return
         if (!session.editable) event.isCancelled = true
-        else if (!event.whoClicked.hasPermission(if (session.provider != null) "adm.admin.enderedit" else "adm.admin.invsee.edit")) {
+        else if (!canEdit(session, event.whoClicked)) {
             event.isCancelled = true
             plugin.server.scheduler.runTask(plugin, Runnable { close(session) })
         } else if (!event.isCancelled) {
@@ -253,7 +339,7 @@ class InventoryToolsService(
         val session = sessions[event.whoClicked.uniqueId] ?: return
         if (event.view.topInventory != session.inventory) return
         if (!session.editable) event.isCancelled = true
-        else if (!event.whoClicked.hasPermission(if (session.provider != null) "adm.admin.enderedit" else "adm.admin.invsee.edit")) {
+        else if (!canEdit(session, event.whoClicked)) {
             event.isCancelled = true
             plugin.server.scheduler.runTask(plugin, Runnable { close(session) })
         } else if (!event.isCancelled) {
@@ -293,22 +379,26 @@ class InventoryToolsService(
 
     private fun scheduleFlush(session: Session) {
         if (session.flushTask != null) return
-        session.flushTask = plugin.server.scheduler.runTask(plugin, Runnable {
+        val flush = Runnable {
             session.flushTask = null
             if (sessions[session.staff.uniqueId] === session) {
                 try {
                     recordChanges(session)
-                    session.lease?.flush()
+                    if (session.offlineSnapshot != null) saveOfflineSnapshot(session) else session.lease?.flush()
                 } catch (failure: Throwable) { modules.fail(id, failure) }
             }
-        })
+        }
+        session.flushTask = if (session.offlineSnapshot != null) {
+            plugin.server.scheduler.runTaskLater(plugin, flush, 20L)
+        } else plugin.server.scheduler.runTask(plugin, flush)
     }
 
     private fun contents(session: Session): List<String> {
         val source = session.invsee?.target?.inventory ?: session.inventory
-        return source.contents.map { item ->
+        val digest = MessageDigest.getInstance("SHA-256")
+        return source.contents.take(if (session.kind == "inventory") 41 else source.size).map { item ->
             if (item == null || item.type.isAir) "empty" else
-                "${item.type}:${item.amount}:sha256:${HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(item.serializeAsBytes()))}"
+                "${item.type}:${item.amount}:sha256:${HexFormat.of().formatHex(digest.digest(item.serializeAsBytes()))}"
         }
     }
 
@@ -323,8 +413,25 @@ class InventoryToolsService(
 
     private fun audit(session: Session, action: String, details: Map<String, String>) {
         plugin.server.servicesManager.load(AuditSink::class.java)?.record(AuditEvent(Instant.now(), session.staff.uniqueId,
-            session.staff.name, session.target, session.targetName, if (session.provider != null) "ender-chest" else "invsee",
+            session.staff.name, session.target, session.targetName, session.kind,
             action, details + ("source" to session.source)))
+    }
+
+    private fun canEdit(session: Session, player: org.bukkit.entity.HumanEntity) =
+        player.hasPermission(session.editPermission) || (session.selfEdit && player.uniqueId == session.staff.uniqueId)
+
+    private fun saveOfflineSnapshot(session: Session) {
+        val snapshot = session.offlineSnapshot ?: return
+        if (!session.editable) return
+        if (session.kind == "ender-chest") {
+            snapshot.enderChest = session.inventory.contents.map { it?.clone() }.toMutableList()
+        } else {
+            val updated = snapshot.inventory.toMutableList()
+            while (updated.size < 41) updated.add(null)
+            for (slot in 0 until 41) updated[slot] = session.inventory.getItem(slot)?.clone()
+            snapshot.inventory = updated
+        }
+        offlineInventories.saveEdited(session.target, snapshot)
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -341,6 +448,22 @@ class InventoryToolsService(
     fun onQuit(event: PlayerQuitEvent) {
         sessions.values.filter { it.target == event.player.uniqueId || it.staff.uniqueId == event.player.uniqueId }
             .toList().forEach { close(it) }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    fun captureOnQuit(event: PlayerQuitEvent) { offlineInventories.capture(event.player) }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    fun onJoin(event: PlayerJoinEvent) {
+        closeTarget(event.player.uniqueId)
+        plugin.server.scheduler.runTask(plugin, Runnable {
+            if (!event.player.isOnline) return@Runnable
+            try { offlineInventories.restorePending(event.player) }
+            catch (failure: Throwable) {
+                plugin.logger.log(java.util.logging.Level.SEVERE,
+                    "Could not restore offline inventory edits for ${event.player.uniqueId}", failure)
+            }
+        })
     }
 
     @EventHandler(priority = EventPriority.LOWEST)

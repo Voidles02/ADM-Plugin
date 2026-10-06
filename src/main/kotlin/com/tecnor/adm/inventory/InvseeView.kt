@@ -27,6 +27,8 @@ class InvseeView(private val staff: Player, val target: Player, title: Component
         if (top || event.action == InventoryAction.MOVE_TO_OTHER_INVENTORY || event.action == InventoryAction.COLLECT_TO_CURSOR) {
             event.isCancelled = true
         } else return
+        if (target.uniqueId == staff.uniqueId && (!top || event.action == InventoryAction.MOVE_TO_OTHER_INVENTORY ||
+                event.action == InventoryAction.COLLECT_TO_CURSOR)) return
         if (raw < 0 || (top && raw >= 41)) return
         val slot = if (top) raw else event.view.convertSlot(raw)
         val source = if (top) target.inventory else staff.inventory

@@ -79,6 +79,7 @@ information:
   whois-online: '<prefix><gray><target><newline>Ping: <ping>ms<newline>Game mode: <gamemode><newline>Location: <location><newline>Playtime: <playtime><newline>First played: <first><newline>Last seen: <last> (UTC)</gray>'
   whois-online-ip: '<prefix><gray><target><newline>IP: <ip><newline>Ping: <ping>ms<newline>Game mode: <gamemode><newline>Location: <location><newline>Playtime: <playtime><newline>First played: <first><newline>Last seen: <last> (UTC)</gray>'
   whois-offline: '<prefix><gray><target> (offline)<newline>First played: <first><newline>Last seen: <last> (UTC)<newline>IP: unavailable<newline>Ping: unavailable<newline>Game mode: unavailable<newline>Location: unavailable<newline>Playtime: unavailable</gray>'
+  whois-stored-ip: '<prefix><gray><target> (offline)<newline>First played: <first><newline>Last seen: <last> (UTC)<newline>IP: <ip><newline>Ping: unavailable<newline>Game mode: unavailable<newline>Location: unavailable<newline>Playtime: unavailable</gray>'
   stored: '<prefix><gray><target>: stored first login <first>; last login <last><newline>Name history: <names></gray>'
   stored-ip: '<prefix><gray><target>: stored first login <first>; last login <last><newline>Name history: <names><newline>Last IP: <ip></gray>'
 
@@ -125,9 +126,16 @@ inventory:
   locked: '<prefix><red>This Ender Chest is locked by a staff editor.</red>'
   provider-unavailable: '<prefix><red>No Ender Chest provider is available.</red>'
   offline-ender: '<prefix><red>Offline access unavailable.</red>'
-  offline-invsee: '<prefix><red>Offline inventory access unavailable in this stage.</red>'
+  offline-invsee: '<prefix><red>Offline inventory data is unavailable.</red>'
+  offline-data-unavailable: '<prefix><red>No cached inventory is available yet. The player must join and leave while ADM is installed before offline viewing or editing works.</red>'
   open-failed: '<prefix><red>The inventory could not be opened.</red>'
-  self-edit: '<prefix><red>Use your own inventory directly; invsee self-editing is unavailable.</red>'
+  self-edit: '<prefix><red>You cannot edit this inventory.</red>'
+
+world:
+  time-set: '<prefix><green>Set the time in <world> to <time>.</green>'
+  weather-cleared: '<prefix><green>Cleared weather in <world> for 10 minutes.</green>'
+  not-found: '<prefix><red>World <world> was not found.</red>'
+  required: '<prefix><yellow>Console must specify a world.</yellow>'
 
 vanish:
   help: '<prefix><yellow>Vanish: /vanish on uses your highest allowed level; /vanish off restores visibility; /vanish set LVL selects a level. Bare /vanish toggles. Higher levels are hidden from more staff; viewers need a level at least as high as yours to see you. Your highest permitted level is <max>.</yellow>'
@@ -171,6 +179,7 @@ staff:
 
 reports:
   submitted: '<prefix><green>Report submitted for <target>.</green>'
+  no-change: '<prefix><yellow>No report status changed; it may already be claimed or closed.</yellow>'
   notify: '<prefix><yellow><staff> reported <target>: <reason></yellow>'
   title: '<dark_gray>Reports <page>/<pages></dark_gray>'
   entry: '<yellow>#<id> <target> [<status>]</yellow>'

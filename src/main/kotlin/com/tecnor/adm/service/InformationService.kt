@@ -121,7 +121,18 @@ class InformationService(
                 return@Runnable
             }
             if (resolvePaper != null) {
-                messages.send(actor, execute(actor, resolvePaper, target.id.toString()))
+                val values = mapOf("target" to target.name, "first" to timestamp(target.firstLogin),
+                    "last" to timestamp(target.lastLogin))
+                val response = if (resolvePaper == "seen") {
+                    ActionResult.success("information.seen", values)
+                } else if (showIp) {
+                    ActionResult.success("information.whois-stored-ip", values + ("ip" to target.ip))
+                } else {
+                    ActionResult.success("information.whois-offline", values)
+                }
+                permissions.record(actor, resolvePaper)
+                plugin.logger.info("${actor.name()} used /$resolvePaper ${target.name}")
+                messages.send(actor, response)
                 return@Runnable
             }
             val allowedIp = showIp && actor.hasPermission("adm.admin.whois.ip")

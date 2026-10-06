@@ -23,7 +23,8 @@ When LuckPerms is enabled, ADM creates or updates the `moderator`, `admin`, and 
 | `modules.information` | Near, ping, online list, whois, seen |
 | `modules.chat` | Title announcements, broadcast, clear/mute chat, slowmode, sudo |
 | `modules.anticheat` | Connect to supported anticheats, check status, toggle the connected plugin, and manage Grim exemptions |
-| `modules.inventory` | Ender Chest providers, locked ender editing, invsee |
+| `modules.inventory` | Ender Chest providers, locked ender editing, self inventory editing, and offline inventory snapshots |
+| `modules.world-control` | Set day/noon/night and clear weather with `/w stop` |
 | `modules.vanish` | `/vanish on|off|set LVL|help`, level-based visibility, fake leave/join messages on vanish transitions, pickup and mob-target protection |
 | `modules.punishments` | Persistent bans, IP bans, mutes, warnings, kicks, history, alts |
 | `modules.staff-chat` | Staff chat and command/social spy; independent of database health |
@@ -74,9 +75,11 @@ Staff command nodes default to op-only; TPA request commands default to availabl
 | `/mutechat` | `adm.mod.mutechat` | — |
 | `/slowmode <seconds\|off>` | `adm.mod.slowmode` | — |
 | `/sudo <player> <message or /command>` | `adm.admin.sudo` | — |
-| `/endersee <player>` | `adm.admin.endersee` | Read-only; no aliases |
-| `/enderedit <player>` | `adm.admin.enderedit` | Exclusive edit lease; no aliases |
-| `/invsee <player>` | `adm.admin.invsee` | `adm.admin.invsee.edit` enables editing |
+| `/endersee <player>` | `adm.admin.endersee` | Read-only; offline data is available after ADM has captured the player's inventory on leave |
+| `/enderedit <player>` | `adm.admin.enderedit` | Exclusive edit lease; offline edits restore on the player's next join |
+| `/invsee <player>` | `adm.admin.invsee` | `adm.admin.invsee.edit` enables editing; self inventory editing is allowed |
+| `/day [world]` (`/dat`), `/noon [world]`, `/night [world]` | `adm.admin.worldcontrol` | Defaults to your current world; console must specify one |
+| `/w stop [world]` | `adm.admin.worldcontrol` | Clears weather for 10 minutes; other `/w` messages remain unaffected |
 | `/vanish [on|off|set LVL|help]`, `/v` | `adm.admin.vanish` | `adm.vanish.level.<n>` for the chosen level; bare `/vanish` toggles |
 | See vanished players | `adm.admin.vanish.see` | Viewer must have a level at least as high as the vanished player's chosen level |
 | Silent vanish on join | `adm.admin.vanish.join` | Base vanish permission, a level, and `vanish.on-join: true` |

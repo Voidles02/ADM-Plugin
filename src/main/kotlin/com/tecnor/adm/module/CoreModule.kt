@@ -59,6 +59,18 @@ class CoreModule(
                                 } }))
                         .then(Commands.literal("debug").executes { execute(it.source, service::debug) })
                     event.registrar().register(root.build(), "ADM administration commands", commands.aliases())
+                    val consoleStatus = Commands.literal("ADM-Console")
+                        .requires { it.sender is ConsoleCommandSender }
+                        .executes { context ->
+                            val sender = context.source.sender
+                            val online = plugin.server.onlinePlayers
+                            val enabled = modules.statuses().count { it.value == ModuleStatus.ENABLED }
+                            sender.sendMessage("ADM console status: ${online.size}/${plugin.server.maxPlayers} players online")
+                            sender.sendMessage("Online players: ${online.joinToString(", ") { it.name }.ifEmpty { "none" }}")
+                            sender.sendMessage("Modules enabled: $enabled/${modules.statuses().size}")
+                            1
+                        }
+                    event.registrar().register(consoleStatus.build(), "Live ADM status for console only")
                     commandsRegistered = true
                     plugin.logger.info("Registered /${commands.name()} and aliases ${commands.aliases().joinToString()}; database subcommand is available.")
                 } catch (failure: Throwable) {

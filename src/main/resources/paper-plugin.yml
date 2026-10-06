@@ -97,6 +97,7 @@ permissions:
       adm.admin.log: true
       adm.admin.cleanup: true
       adm.admin.tpa.configure: true
+      adm.admin.worldcontrol: true
   adm.mod.*:
     description: Moderator tools
     default: op
@@ -318,6 +319,9 @@ permissions:
     default: op
   adm.admin.tpa.configure:
     description: Configure TPA cooldown and protection durations
+    default: op
+  adm.admin.worldcontrol:
+    description: Change world time and clear weather
     default: op
   adm.tpa.use:
     description: Send and respond to TPA requests

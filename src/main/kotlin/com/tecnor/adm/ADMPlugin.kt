@@ -34,6 +34,7 @@ import com.tecnor.adm.service.StaffCommunicationsService
 import com.tecnor.adm.service.TeleportService
 import com.tecnor.adm.service.TpaService
 import com.tecnor.adm.service.VanishService
+import com.tecnor.adm.service.WorldControlService
 import com.tecnor.adm.settings.ConfigService
 import com.tecnor.adm.settings.SettingsLoader
 import com.tecnor.adm.staff.StaffToolsService
@@ -132,6 +133,8 @@ class ADMPlugin : JavaPlugin() {
         moduleManager.register(FeatureModule(this, moduleManager, messages,
             AnticheatService(this, moduleManager, permissions, grimCompatibility)))
         moduleManager.register(FeatureModule(this, moduleManager, messages, ChatService(this, moduleManager, permissions, settings, messages, hierarchy)))
+        moduleManager.register(FeatureModule(this, moduleManager, messages,
+            WorldControlService(this, moduleManager, permissions, messages)))
         enderChestProviders = EnderChestProviderRegistry()
         val inventories = InventoryToolsService(this, moduleManager, permissions, messages, enderChestProviders)
         moduleManager.register(FeatureModule(this, moduleManager, messages, inventories))
@@ -172,7 +175,9 @@ class ADMPlugin : JavaPlugin() {
         val barWidth = 16
         val filled = if (statuses.isEmpty()) 0 else enabled * barWidth / statuses.size
         val moduleBar = "█".repeat(filled) + "░".repeat(barWidth - filled)
-        val version = pluginMeta.version
+        val version = pluginMeta.version.takeUnless { it.isBlank() || it.contains('$') }
+            ?: javaClass.getPackage()?.implementationVersion
+            ?: "unknown"
         val minecraftVersion = server.minecraftVersion
         val players = "${server.onlinePlayers.size}/${server.maxPlayers}"
         val optionalPlugins = listOf(
@@ -182,9 +187,17 @@ class ADMPlugin : JavaPlugin() {
             "FakeSeed" to "FakeSeed"
         ).filter { (pluginName, _) -> server.pluginManager.isPluginEnabled(pluginName) }
             .joinToString("  ·  ") { (_, displayName) -> displayName }
-        val contentWidth = 64
+        val bannerRows = listOf(
+            "  VERSION   $version",
+            "  SERVER    Minecraft $minecraftVersion  ·  Java ${Runtime.version().feature()}",
+            "  MODULES   [$moduleBar]  $enabled/${statuses.size} enabled",
+            "  HEALTH    $failed failed  ·  $disabled disabled",
+            "  PLAYERS   $players online",
+            "  OPTIONAL  ${optionalPlugins.ifEmpty { "No optional integrations detected" }}"
+        )
+        val contentWidth = maxOf(64, bannerRows.maxOf { it.length })
         val border = "─".repeat(contentWidth)
-        fun row(text: String) = "│${text.take(contentWidth).padEnd(contentWidth)}│"
+        fun row(text: String) = "│${text.padEnd(contentWidth)}│"
         fun centered(text: String): String {
             val value = text.take(contentWidth)
             val left = (contentWidth - value.length) / 2
@@ -194,12 +207,7 @@ class ADMPlugin : JavaPlugin() {
         logger.info("╭$border╮")
         logger.info(row(centered("ADM  ·  ADVANCED ADMIN MANAGEMENT")))
         logger.info("├$border┤")
-        logger.info(row("  VERSION   $version"))
-        logger.info(row("  SERVER    Minecraft $minecraftVersion  ·  Java ${Runtime.version().feature()}"))
-        logger.info(row("  MODULES   [$moduleBar]  $enabled/${statuses.size} enabled"))
-        logger.info(row("  HEALTH    $failed failed  ·  $disabled disabled"))
-        logger.info(row("  PLAYERS   $players online"))
-        logger.info(row("  OPTIONAL  ${optionalPlugins.ifEmpty { "No optional integrations detected" }}"))
+        bannerRows.forEach { logger.info(row(it)) }
         logger.info("╰$border╯")
     }
 

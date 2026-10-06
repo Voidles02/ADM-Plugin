@@ -205,6 +205,10 @@ class ReportsService(plugin: JavaPlugin, modules: ModuleManager, permissions: Pe
             }
             val target = result.first
             if (target == null) { output.complete(ActionResult.failure("hud.report-missing")); return@Runnable }
+            if (action != "TP" && result.second == 0) {
+                output.complete(ActionResult.failure("reports.no-change"))
+                return@Runnable
+            }
             if (action == "TP") {
                 val online = Bukkit.getPlayer(target.first)
                 val teleport = modules.features().firstOrNull { it.id() == "teleport" }?.service

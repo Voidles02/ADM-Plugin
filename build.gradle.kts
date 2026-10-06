@@ -39,3 +39,7 @@ tasks.processResources {
         expand("version" to project.version)
     }
 }
+
+tasks.jar {
+    manifest.attributes["Implementation-Version"] = project.version
+}
