@@ -1,8 +1,8 @@
 # ADM — Advanced Admin Management
 
 Author: **voidles02**  
-Version: **0.11.0-stage14**  
-Stage: **14 — staff vanish and performance updates**
+Version: **0.11.0-stage15**  
+Stage: **15 — console diagnostics and reliability updates**
 
 ## Installation
 
@@ -16,12 +16,12 @@ When LuckPerms is enabled, ADM creates or updates the `moderator`, `admin`, and 
 
 | Toggle | Features |
 | --- | --- |
-| `modules.core` | `/adm reload`, `/adm version`, `/adm debug`, `/adm storage-info`, `/adm database`, `/adm log`, `/adm cleanup` |
+| `modules.core` | `/adm reload`, `/adm version`, `/adm debug`, `/adm storage-info`, `/adm database`, `/adm log`, `/adm cleanup`, console-only `/ADM-Console` live status |
 | `modules.player-tools` | Game modes, flight, speed, god, heal, feed, repair, clear |
 | `modules.teleport` | Player/coordinate teleports, back, safe top |
 | `modules.tpa` | TPA requests, accept/deny, configurable request cooldown and post-teleport damage protection |
 | `modules.information` | Near, ping, online list, whois, seen |
-| `modules.chat` | Title announcements, broadcast, clear/mute chat, slowmode, sudo |
+| `modules.chat` | Title announcements, broadcast, bounded clear/mute chat, slowmode, sudo |
 | `modules.anticheat` | Connect to supported anticheats, check status, toggle the connected plugin, and manage Grim exemptions |
 | `modules.inventory` | Ender Chest providers, locked ender editing, self inventory editing, and offline inventory snapshots |
 | `modules.world-control` | Set day/noon/night and clear weather with `/w stop` |
@@ -46,6 +46,7 @@ Staff command nodes default to op-only; TPA request commands default to availabl
 | `/adm version` | `adm.admin.version` | — |
 | `/adm debug` | `adm.admin.debug` | — |
 | `/adm database` | `adm.admin.database` | Prints the embedded database file path |
+| `/ADM-Console` | Console sender only; no permission node | Live online count/max, player names, and enabled-module count at invocation |
 | `/gamemode <survival\|creative\|adventure\|spectator> [player]`, `/gm` | `adm.mod.gamemode` | `adm.mod.gamemode.others` |
 | `/gmc [player]`, `/gms [player]`, `/gma [player]`, `/gmsp [player]` | `adm.mod.gamemode` | `adm.mod.gamemode.others` |
 | `/fly [player]` | `adm.mod.fly` | `adm.mod.fly.others` |
@@ -109,7 +110,9 @@ Staff command nodes default to op-only; TPA request commands default to availabl
 | `/adm log [staff] [target] [action] [page]` | `adm.admin.log` | Use `*` to skip a filter |
 | `/adm cleanup` | `adm.admin.cleanup` | Deletes old audit rows and old closed reports |
 
-`/adm` shows core help when the actor has any core permission. Its default alias is `/advancedadminmanagement`. Commands support players and the local console. Console must specify a target for player tools and ping. Repair, near, teleport, inventory views, and vanish need an in-game player context. Whois and seen support console. Suggestions include only online player names and fixed values; worlds and offline players are not suggested. Offline-capable commands accept cached names or UUIDs without a network name lookup.
+`/adm` shows core help when the actor has any core permission. Its default alias is `/advancedadminmanagement`. Commands support players and the local console, except `/ADM-Console`, which is restricted to the server console. `/ADM-Console` reads current server state each time it runs rather than reporting a cached startup count. Console must specify a target for player tools and ping. Repair, near, teleport, inventory views, and vanish need an in-game player context. Whois and seen support console. Suggestions include only online player names and fixed values; worlds and offline players are not suggested. Offline-capable commands accept cached names or UUIDs without a network name lookup.
+
+The startup banner displays the built plugin version, falling back to the JAR's implementation version if plugin metadata is unresolved. Its width grows to fit the optional-integration status instead of clipping long integration names.
 
 ### Wildcards and hierarchy markers
 
@@ -165,7 +168,7 @@ Do not grant `adm.*` or `adm.bypass.hierarchy` to the hierarchy test accounts: t
 
 `cooldowns.<command>` is an integer number of seconds, 0–86400; missing entries and 0 disable the cooldown. Cooldowns apply per actor and canonical command. `/gm` and the fixed shortcuts use `cooldowns.gamemode`. Accepted actions start cooldowns; ordinary permission/input denials do not. Teleport requests start cooldowns when accepted even if the eventual teleport is cancelled. Console has no cooldown. TPA has its own `tpa.cooldown-seconds` (default 5) and `tpa.protection-seconds` (default 15); 0 disables either duration. Authorized staff can change them with `/tpa cooldown set <time>` and `/tpa protection <time>`; changes save to `config.yml` and take effect immediately.
 
-`slowmode.min-seconds` and `.max-seconds` bound accepted intervals (defaults 1–300, maximum 86400). `near.default-radius` and `.max-radius` default to 100 and 1000 (maximum 10000). `clearchat.lines` defaults to 100 (range 1–500). Minimum/default values cannot exceed their respective maximums. `login-fallback: allow|deny` determines whether storage errors/timeouts allow or reject login. It never overrides an existing rejection by another plugin.
+`slowmode.min-seconds` and `.max-seconds` bound accepted intervals (defaults 1–300, maximum 86400). `near.default-radius` and `.max-radius` default to 100 and 1000 (maximum 10000). `clearchat.lines` defaults to 100 (configuration range 1–500); each `/clearchat` run sends at most 100 lines per player. Minimum/default values cannot exceed their respective maximums. `login-fallback: allow|deny` determines whether storage errors/timeouts allow or reject login. It never overrides an existing rejection by another plugin.
 
 `/adm reload` reads and validates both YAML files on ADM's executor. Invalid YAML, types, ranges, aliases, or MiniMessage syntax leave the old immutable snapshot active. A valid snapshot is swapped atomically on the main thread, then each enabled module receives `onReload(snapshot)`. Messages, cooldowns, TPA durations, and limits apply immediately; an active slowmode interval is clamped to updated limits. Cached chat denial components are rebuilt. Inventory views close and edit leases flush and release. File audit settings update without replacing its writer; vanish visibility is refreshed. Module toggles and the root command name/aliases are compared with startup and produce one **restart required** notice per changed setting; registered commands and enabled modules do not change on reload.
 
@@ -184,6 +187,7 @@ All ADM messages use configurable MiniMessage templates in `messages.yml`. Missi
 - All gameplay/permission/hierarchy access is main-thread confined. Reload workers handle only immutable plain data and local YAML parsers. LuckPerms event callbacks copy UUIDs and schedule cache refresh on the main thread. Async teleport completion schedules all live player/world access back to the main thread.
 - ConcurrentHashMap-backed player caches are documented in their owning services; mutable gameplay state remains main-thread confined. ConfigService's atomic snapshot and message warning sets are safe for cross-thread reads. Service methods own module/permission/hierarchy/cooldown/audit rules, not the command adapter.
 - Accepted feature actions are logged to the server log; sudo logs actor and target but never its command payload. Command spies suppress common login/password commands. Inventory access/edits, punishments, staff-mode transitions, freeze changes, and reports go through `api.AuditSink` into embedded storage. Whois IP values are not logged to the server log.
+- `/clearchat` reuses one online-player snapshot for the operation and clamps the configured burst to 100 lines per player to limit synchronous message work.
 - Shutdown restores staff snapshots on the main thread, closes inventory views, flushes/releases provider leases, restores other temporary player state, unregisters listeners, cancels tasks, and drains database/audit/reload workers within one shared five-second waiting budget. Snapshots are durable before staff kits can be equipped.
 
 ## Known limitations
