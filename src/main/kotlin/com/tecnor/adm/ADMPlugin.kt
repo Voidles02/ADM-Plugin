@@ -15,6 +15,7 @@ import com.tecnor.adm.hud.HudManager
 import com.tecnor.adm.integration.GrimCompatibility
 import com.tecnor.adm.integration.LuckPermsIntegration
 import com.tecnor.adm.integration.LuckPermsRoleSetup
+import com.tecnor.adm.integration.QuizyCombatLogCompatibility
 import com.tecnor.adm.integration.WorldGuardCompatibility
 import com.tecnor.adm.message.MessageService
 import com.tecnor.adm.module.CoreModule
@@ -102,6 +103,20 @@ class ADMPlugin : JavaPlugin() {
         grimCompatibility = GrimCompatibility(this)
         server.pluginManager.registerEvents(grimCompatibility, this)
         grimCompatibility.enable()
+        val quizyCompatibility = QuizyCombatLogCompatibility(this) {
+            buildList {
+                add(initial.commands().name())
+                addAll(initial.commands().aliases())
+                add("ADM-Console")
+                moduleManager.features().forEach { feature ->
+                    feature.service.commands.forEach { command ->
+                        add(command.name)
+                        addAll(command.aliases)
+                    }
+                }
+            }
+        }
+        server.pluginManager.registerEvents(quizyCompatibility, this)
         val scheduler = SchedulerHelper(this)
         if (server.pluginManager.isPluginEnabled("LuckPerms")) {
             try {
@@ -157,6 +172,7 @@ class ADMPlugin : JavaPlugin() {
         val hud = HudManager(this, moduleManager, messages, storage, adminService, enderChestProviders)
         moduleManager.register(FeatureModule(this, moduleManager, messages, hud))
         moduleManager.enableConfigured(initial)
+        quizyCompatibility.enable()
         logStartupSummary()
         storage.ready.thenAccept { available -> scheduler.main(Runnable {
             if (!available) {

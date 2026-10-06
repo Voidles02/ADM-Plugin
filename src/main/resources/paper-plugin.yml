@@ -1,7 +1,7 @@
 name: ADM
 version: '${version}'
 main: com.tecnor.adm.ADMPlugin
-description: Advanced Admin Management - Stage 14 staff vanish and performance updates
+description: Advanced Admin Management - Stage 17 QuizyCombatLog command compatibility
 api-version: '1.21'
 authors: [voidles02]
 

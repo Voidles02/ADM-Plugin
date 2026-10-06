@@ -25,7 +25,7 @@ class LoginRecorder(private val storage: Storage, private val settings: ConfigSe
                     db.update("INSERT INTO players(uuid,name,ip,first_login,last_login) VALUES(?,?,?,?,?)", id, name, ip, now, now)
                 if (db.update("UPDATE names SET last_seen=? WHERE name=? AND uuid=?", now, name, id) == 0)
                     db.update("INSERT INTO names(name,uuid,first_seen,last_seen) VALUES(?,?,?,?)", name, id, now, now)
-            } }.get(8, TimeUnit.SECONDS)
+			} }.get(4, TimeUnit.SECONDS)
         } catch (_: Exception) {
             if (settings.current().loginFallback() == "deny") event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER,
                 Component.text("Login unavailable: administration storage is offline."))

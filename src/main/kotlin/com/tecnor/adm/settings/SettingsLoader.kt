@@ -20,7 +20,9 @@ object SettingsLoader {
         "near", "ping", "list", "whois", "seen", "endersee", "enderedit", "invsee", "gamemode", "gm", "gmc", "gms",
         "gma", "gmsp", "fly", "speed", "god", "heal", "feed", "repair", "clear", "report", "reports", "staffchat", "sc",
         "spy", "tp", "tphere", "tpall", "tppos", "back", "top", "tpa", "tpaccept", "tpdeny", "day", "dat", "noon", "night",
-        "admtpa", "admtpaccept", "admtpdeny", "vanish", "v"
+        "admtpa", "admtpaccept", "admtpdeny", "vanish", "v", "freeze", "staffmode", "sm", "mute", "tempmute", "unmute",
+        "warn", "warnings", "clearwarnings", "kick", "ban", "tempban", "ipban", "unban", "history", "alts", "adm-hud", "admhud",
+        "adm-console"
     )
 
     @JvmStatic

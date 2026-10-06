@@ -274,7 +274,7 @@ class StaffToolsService(plugin: JavaPlugin, modules: ModuleManager, permissions:
             val data = storage.submit { db ->
                 db.query("SELECT uuid FROM frozen WHERE uuid=?", id.toString()) { it.getString(1) }.isNotEmpty() to
                     db.query("SELECT data FROM staff_snapshots WHERE uuid=?", id.toString()) { it.getBytes(1) }.firstOrNull()
-            }.get(8, TimeUnit.SECONDS)
+			}.get(4, TimeUnit.SECONDS)
             if (data.first) frozen.add(id) else frozen.remove(id)
             recovery.remove(id)
             data.second?.let { recovery[id] = it }
@@ -317,7 +317,7 @@ class StaffToolsService(plugin: JavaPlugin, modules: ModuleManager, permissions:
     fun move(event: PlayerMoveEvent) {
         if (!isFrozen(event.player) && !restricted(event.player)) return
         val to = event.to ?: return
-        if (event.from.world != to.world || event.from.blockX != to.blockX || event.from.blockY != to.blockY || event.from.blockZ != to.blockZ)
+		if (event.from.world != to.world || event.from.x != to.x || event.from.y != to.y || event.from.z != to.z)
             event.to = event.from.clone().also {
                 it.yaw = to.yaw
                 it.pitch = to.pitch
