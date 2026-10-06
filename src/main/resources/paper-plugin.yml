@@ -1,7 +1,7 @@
 name: ADM
 version: '${version}'
 main: com.tecnor.adm.ADMPlugin
-description: Advanced Admin Management - Stage 13 TPA aliases and LuckPerms settings
+description: Advanced Admin Management - Stage 14 staff vanish and performance updates
 api-version: '1.21'
 authors: [voidles02]
 
@@ -23,6 +23,22 @@ dependencies:
       load: BEFORE
       required: false
       join-classpath: true
+    voicechat:
+      load: BEFORE
+      required: false
+      join-classpath: false
+    BetterTeams:
+      load: BEFORE
+      required: false
+      join-classpath: false
+    BetterStasis:
+      load: BEFORE
+      required: false
+      join-classpath: false
+    FakeSeed:
+      load: BEFORE
+      required: false
+      join-classpath: false
 
 permissions:
   adm.*:

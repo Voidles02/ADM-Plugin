@@ -57,13 +57,16 @@ class GrimCompatibility(private val plugin: JavaPlugin) : Listener, AutoCloseabl
     private fun grimEnabled() = plugin.server.pluginManager.getPlugin("GrimAC")?.isEnabled == true
 
     fun refreshOnlinePlayers() {
-        plugin.server.onlinePlayers.forEach(::refresh)
+        val grimAvailable = grimEnabled()
+        plugin.server.onlinePlayers.forEach { refresh(it, grimAvailable) }
     }
 
-    private fun refresh(player: Player) {
+    private fun refresh(player: Player) = refresh(player, grimEnabled())
+
+    private fun refresh(player: Player, grimAvailable: Boolean) {
         val id = player.uniqueId
         val current = attachments[id]
-        val shouldExempt = grimEnabled() && player.hasPermission("adm.grim.exempt")
+        val shouldExempt = grimAvailable && player.hasPermission("adm.grim.exempt")
         if (shouldExempt && current == null) {
             attachments[id] = player.addAttachment(plugin, "grim.exempt", true)
         } else if (!shouldExempt && current != null) {

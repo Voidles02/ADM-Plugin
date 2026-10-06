@@ -78,9 +78,10 @@ audit:
   rotate-daily: true
 
 vanish:
-  on-join: true
-  fake-join: false
-  fake-quit: false
+  on-join: false
+  on-join-migration-complete: true
+  fake-join: true
+  fake-quit: true
 
 punishments:
   default-reason: No reason specified

@@ -91,7 +91,7 @@ class VanishService(
         }
         val alreadyVanished = player.uniqueId in vanished
         activate(player, selected)
-        if (!alreadyVanished && config.current().value("vanish.fake-quit") == true) fake(player, "vanish.fake-quit")
+        if (!alreadyVanished) fakeIfEnabled(player, "vanish.fake-quit")
         return done(actor, "vanish", "vanish.enabled", mapOf("level" to selected.toString()))
     }
 
@@ -100,7 +100,7 @@ class VanishService(
         player.canPickupItems = state.pickup
         Bukkit.getOnlinePlayers().forEach { it.showPlayer(plugin, player) }
         syncRefreshTask()
-        if (config.current().value("vanish.fake-join") == true) fake(player, "vanish.fake-join")
+        fakeIfEnabled(player, "vanish.fake-join")
         return done(actor, "vanish", "vanish.disabled")
     }
 
@@ -121,13 +121,19 @@ class VanishService(
 
     fun staffLevel(player: Player): Int? = vanished[player.uniqueId]?.level
 
-    fun staffActivate(player: Player) { activate(player, level(player)) }
+    fun staffActivate(player: Player) {
+        val alreadyVanished = player.uniqueId in vanished
+        activate(player, level(player))
+        if (!alreadyVanished) fakeIfEnabled(player, "vanish.fake-quit")
+    }
 
     fun staffRestore(player: Player, previous: Int?) {
         if (previous != null) activate(player, previous) else {
-            vanished.remove(player.uniqueId)?.let { player.canPickupItems = it.pickup }
+            val state = vanished.remove(player.uniqueId)
+            state?.let { player.canPickupItems = it.pickup }
             Bukkit.getOnlinePlayers().forEach { it.showPlayer(plugin, player) }
             syncRefreshTask()
+            if (state != null) fakeIfEnabled(player, "vanish.fake-join")
         }
     }
 
@@ -152,10 +158,14 @@ class VanishService(
         Bukkit.getOnlinePlayers().filter { it.uniqueId != player.uniqueId }.forEach { it.sendMessage(message) }
     }
 
+    private fun fakeIfEnabled(player: Player, key: String) {
+        if (config.current().value(key) == true) fake(player, key)
+    }
+
     @EventHandler(priority = EventPriority.HIGHEST)
     fun onJoin(event: PlayerJoinEvent) {
         val player = event.player
-        if (config.current().value("vanish.on-join") != false && player.hasPermission("adm.admin.vanish.join") &&
+        if (config.current().value("vanish.on-join") == true && player.hasPermission("adm.admin.vanish.join") &&
             player.hasPermission("adm.admin.vanish") && player.hasPermission("adm.vanish.level.${level(player)}")) {
             activate(player, level(player))
             event.joinMessage(null)

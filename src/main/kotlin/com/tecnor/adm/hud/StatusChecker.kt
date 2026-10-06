@@ -152,7 +152,7 @@ class StatusChecker(private val manager: HudManager) : AutoCloseable {
         liveTask = manager.plugin.server.scheduler.runTaskTimer(manager.plugin, Runnable {
             val sessions = manager.sessions.values.filter { it.screen is StatusScreen && !it.awaitingChat }
             if (sessions.isEmpty()) { updateLiveTask(); return@Runnable }
-            snapshot(true)
+            snapshot()
             sessions.forEach { session -> Bukkit.getPlayer(session.viewer)?.let { viewer -> refresh(session, viewer) } }
         }, seconds.coerceIn(1, 60) * 20L, seconds.coerceIn(1, 60) * 20L)
     }

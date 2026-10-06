@@ -1,8 +1,8 @@
 # ADM — Advanced Admin Management
 
 Author: **voidles02**  
-Version: **0.11.0-stage13**  
-Stage: **13 — TPA aliases and LuckPerms settings**
+Version: **0.11.0-stage14**  
+Stage: **14 — staff vanish and performance updates**
 
 ## Installation
 
@@ -24,7 +24,7 @@ When LuckPerms is enabled, ADM creates or updates the `moderator`, `admin`, and 
 | `modules.chat` | Title announcements, broadcast, clear/mute chat, slowmode, sudo |
 | `modules.anticheat` | Connect to supported anticheats, check status, toggle the connected plugin, and manage Grim exemptions |
 | `modules.inventory` | Ender Chest providers, locked ender editing, invsee |
-| `modules.vanish` | `/vanish on|off|set LVL|help`, level-based visibility, silent joins/quits, pickup and mob-target protection |
+| `modules.vanish` | `/vanish on|off|set LVL|help`, level-based visibility, fake leave/join messages on vanish transitions, pickup and mob-target protection |
 | `modules.punishments` | Persistent bans, IP bans, mutes, warnings, kicks, history, alts |
 | `modules.staff-chat` | Staff chat and command/social spy; independent of database health |
 | `modules.staff-tools` | Persistent freeze and recoverable staff-mode snapshots |
@@ -37,7 +37,7 @@ A disabled module registers neither its commands nor its feature listeners. Core
 
 ## Commands and permissions
 
-Staff command nodes default to op-only; TPA request commands default to available to all players. `vanish.on-join` defaults to true in the shipped configuration, but joining players still need the vanish permissions, including `adm.admin.vanish.join`. Vanish levels 0, 2, and 3 default to false; level 1 defaults to op. A base permission is always required; targeting someone else additionally requires the `.others` node when listed. Fixed-mode shortcuts share the game-mode permissions and cooldown.
+Staff command nodes default to op-only; TPA request commands default to available to all players. `vanish.on-join` defaults to false; automatic staff vanish on join is opt-in. Fake leave/join messages default to enabled when staff manually vanish or unvanish. Vanish levels 0, 2, and 3 default to false; level 1 defaults to op. A base permission is always required; targeting someone else additionally requires the `.others` node when listed. Fixed-mode shortcuts share the game-mode permissions and cooldown.
 
 | Command | Base permission | Additional permission |
 | --- | --- | --- |
@@ -252,7 +252,7 @@ Custom screens appear on Home. Navigation and protection are automatic; callback
 - Target quit, staff quit, reload, disable, and provider unregister close affected views. Closing returns the staff cursor using Bukkit's normal close handling, synchronously flushes the lease, closes it, and releases the UUID lock. Providers must honor the lease contract below.
 - `/invsee` is online-only. The 45-slot projection exposes slots 0–35 (storage/hotbar), 36–39 (boots through helmet), and 40 (offhand); slots 41–44 are unavailable. Read-only mode uses the same cancellation rules as endersee. Editable mode performs transactions against the target's **live** inventory on the server thread, rather than saving a GUI snapshot. Stale target-slot clicks are rejected and refreshed. Regular pickups/placement, shift transfers, hotbar/offhand swaps, drops, collection, and drags are supported; creative cloning is not. Drag transactions run on the next server tick after vanilla cursor restoration and validate all touched slots and the cursor before applying. Target/staff death closes invsee views. Self-editing is refused. Grant only `adm.admin.invsee` to read-only staff; ops and the admin wildcard also have editing permission.
 - `/vanish` toggles; `/vanish on` uses the highest permitted level; `/vanish off` restores visibility; `/vanish set LVL` enables or changes to that exact permitted level; `/vanish help` explains visibility levels. Tab completion suggests these subcommands and levels 0–3. Numeric level nodes beyond 0–3 are supported through permission attachments. Viewers need `adm.admin.vanish.see` **and** a permitted level at least as high as the vanished player's chosen level. Unauthorized viewers lose entity and tab visibility. Existing mob targets are cleared; new targeting and item pickups are cancelled. Original pickup eligibility is restored on quit/disable/unvanish.
-- Silent joining is opt-in via `adm.admin.vanish.join` plus `vanish.on-join` (default true); no vanish state persists through quit. Actual quits while vanished are always silent. `vanish.fake-quit` emits a configurable fake quit when manually entering vanish; `vanish.fake-join` emits a fake join when manually leaving it. Both default false. `/list` and `/near` respect viewer visibility.
+- Automatic vanish on join defaults off; the first startup after upgrading also resets the old shipped `true` default to false. Set `vanish.on-join: true` explicitly to opt in again. Vanish state does not persist through quit. Actual quits while vanished are always silent. `vanish.fake-quit` and `vanish.fake-join` emit configurable fake leave/join messages when staff enter or leave vanish, including staff-mode transitions; both default true. `/list` and `/near` respect viewer visibility.
 - Whois online data includes ping, game mode, block location, and `PLAY_ONE_MINUTE` playtime converted from ticks. The IP line is omitted without `adm.admin.whois.ip`. Offline whois exposes only Paper first-played/last-seen and marks all other fields unavailable. Seen uses the same Paper timestamps, rendered as UTC ISO instants; absent timestamps are unavailable.
 
 ## File audit and sink API
@@ -414,7 +414,7 @@ dependencies:
 
 1. Build through Kodari's Compile window; verify a successful Java 21 build. No compilation or server execution is asserted by this checklist.
 2. Start on Paper 1.21.x without LuckPerms; confirm YAML generation and all configured module statuses. Repeat with LuckPerms; verify `moderator`, `admin`, and `owner` are created with weights and inheritance, but no users are assigned automatically. Assign test users and verify each role's ADM and vanilla command permissions. Repeat with every module false: no feature commands should activate; infrastructure still handles storage fallback.
-3. Test `/adm` and its alias, reload/version/debug/storage-info/database, permission denial, and console execution. Confirm author `voidles02` and Stage 13 version. Debug toggles diagnostic logging ON/OFF while still listing module states.
+3. Test `/adm` and its alias, reload/version/debug/storage-info/database, permission denial, and console execution. Confirm author `voidles02` and Stage 14 version. Debug toggles diagnostic logging ON/OFF while still listing module states.
 4. Test every game mode, `/gm`, all four shortcuts, fly, both speed types including 0/10, god damage protection, heal/feed, repair hand/all including armor/offhand, and clear including armor/offhand. Test self, online others, unknown players, extra arguments, and console with explicit targets.
 5. Give base tool permission but not `.others`: others must be denied. Add `.others` and test heal/feed/god/clear on lower, equal, higher, and immune non-op targets. Equal/higher and immune must be denied. Repeat with tier markers without LuckPerms, then primary group weights with LuckPerms; verify a live LP user recalculation updates rank. Test console and hierarchy bypass.
 6. Test tp/tphere/tpall, absolute tppos with/without world, invalid world, NaN/out-of-bounds coordinates, and unloaded destination chunks. Confirm main-thread chunk loading is not initiated by ADM. Cancel a teleport from another plugin and check its failure message.

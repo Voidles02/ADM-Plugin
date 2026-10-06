@@ -70,6 +70,12 @@ class ADMPlugin : JavaPlugin() {
         val directory = dataFolder.toPath()
         val initial = try {
             saveDefaultConfig()
+            val configuration = getConfig()
+            if (!configuration.contains("vanish.on-join-migration-complete", true)) {
+                configuration.set("vanish.on-join", false)
+                configuration.set("vanish.on-join-migration-complete", true)
+                saveConfig()
+            }
             if (!directory.resolve("messages.yml").toFile().exists()) saveResource("messages.yml", false)
             if (!directory.resolve("hud.yml").toFile().exists()) saveResource("hud.yml", false)
             SettingsLoader.load(directory)
@@ -163,21 +169,38 @@ class ADMPlugin : JavaPlugin() {
         val enabled = statuses.count { it == ModuleStatus.ENABLED }
         val disabled = statuses.count { it == ModuleStatus.DISABLED }
         val failed = statuses.count { it == ModuleStatus.FAILED }
-        val barWidth = 12
+        val barWidth = 16
         val filled = if (statuses.isEmpty()) 0 else enabled * barWidth / statuses.size
         val moduleBar = "█".repeat(filled) + "░".repeat(barWidth - filled)
         val version = pluginMeta.version
         val minecraftVersion = server.minecraftVersion
         val players = "${server.onlinePlayers.size}/${server.maxPlayers}"
+        val optionalPlugins = listOf(
+            "voicechat" to "Voice Chat",
+            "BetterTeams" to "BetterTeams",
+            "BetterStasis" to "BetterStasis",
+            "FakeSeed" to "FakeSeed"
+        ).filter { (pluginName, _) -> server.pluginManager.isPluginEnabled(pluginName) }
+            .joinToString("  ·  ") { (_, displayName) -> displayName }
+        val contentWidth = 64
+        val border = "─".repeat(contentWidth)
+        fun row(text: String) = "│${text.take(contentWidth).padEnd(contentWidth)}│"
+        fun centered(text: String): String {
+            val value = text.take(contentWidth)
+            val left = (contentWidth - value.length) / 2
+            return " ".repeat(left) + value + " ".repeat(contentWidth - left - value.length)
+        }
 
-        logger.info("╭──────────────────────────────────────────────────╮")
-        logger.info("│            ADM · ADVANCED ADMIN MANAGEMENT        │")
-        logger.info("├──────────────────────────────────────────────────┤")
-        logger.info("│ Version  $version  ·  Server  $minecraftVersion")
-        logger.info("│ Modules  [$moduleBar]  $enabled/${statuses.size} enabled")
-        logger.info("│ Status   $failed failed  ·  $disabled disabled")
-        logger.info("│ Online   $players players  ·  Java ${Runtime.version().feature()}")
-        logger.info("╰──────────────────────────────────────────────────╯")
+        logger.info("╭$border╮")
+        logger.info(row(centered("ADM  ·  ADVANCED ADMIN MANAGEMENT")))
+        logger.info("├$border┤")
+        logger.info(row("  VERSION   $version"))
+        logger.info(row("  SERVER    Minecraft $minecraftVersion  ·  Java ${Runtime.version().feature()}"))
+        logger.info(row("  MODULES   [$moduleBar]  $enabled/${statuses.size} enabled"))
+        logger.info(row("  HEALTH    $failed failed  ·  $disabled disabled"))
+        logger.info(row("  PLAYERS   $players online"))
+        logger.info(row("  OPTIONAL  ${optionalPlugins.ifEmpty { "No optional integrations detected" }}"))
+        logger.info("╰$border╯")
     }
 
     override fun onDisable() {

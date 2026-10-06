@@ -253,12 +253,17 @@ class StaffToolsService(plugin: JavaPlugin, modules: ModuleManager, permissions:
         if (actionbar != null) return
         val interval = settings.current().integer("freeze.actionbar-seconds", 5).coerceAtLeast(5) * 20L
         actionbar = plugin.server.scheduler.runTaskTimer(plugin, Runnable {
-            val targets = Bukkit.getOnlinePlayers().filter(::isFrozen)
-            if (targets.isEmpty()) {
+            var hasTargets = false
+            val actionbarMessage = messages.render(ActionResult.success("staff.freeze-actionbar"))
+            for (player in Bukkit.getOnlinePlayers()) {
+                if (!isFrozen(player)) continue
+                hasTargets = true
+                player.sendActionBar(actionbarMessage)
+            }
+            if (!hasTargets) {
                 actionbar?.cancel()
                 actionbar = null
             }
-            else targets.forEach { it.sendActionBar(messages.render(ActionResult.success("staff.freeze-actionbar"))) }
         }, interval, interval)
     }
 

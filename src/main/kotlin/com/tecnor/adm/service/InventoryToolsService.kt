@@ -59,7 +59,8 @@ class InventoryToolsService(
         val lease: EnderChestLease?,
         val invsee: InvseeView? = null,
         var previous: List<String> = emptyList(),
-        val source: String = com.tecnor.adm.api.ActionOrigin.current()
+        val source: String = com.tecnor.adm.api.ActionOrigin.current(),
+        var flushTask: BukkitTask? = null
     )
 
     private val sessions = mutableMapOf<UUID, Session>()
@@ -204,6 +205,8 @@ class InventoryToolsService(
 
     private fun release(session: Session) {
         if (sessions.remove(session.staff.uniqueId) !== session) return
+        session.flushTask?.cancel()
+        session.flushTask = null
         syncInvseeRefreshTask()
         try {
             if (session.provider != null) recordChanges(session)
@@ -289,7 +292,9 @@ class InventoryToolsService(
     }
 
     private fun scheduleFlush(session: Session) {
-        plugin.server.scheduler.runTask(plugin, Runnable {
+        if (session.flushTask != null) return
+        session.flushTask = plugin.server.scheduler.runTask(plugin, Runnable {
+            session.flushTask = null
             if (sessions[session.staff.uniqueId] === session) {
                 try {
                     recordChanges(session)
