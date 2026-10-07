@@ -1,7 +1,7 @@
 name: ADM
 version: '${version}'
 main: com.tecnor.adm.ADMPlugin
-description: Advanced Admin Management - Stage 17 QuizyCombatLog command compatibility
+description: Advanced Admin Management - staff-only command visibility and combat tagging
 api-version: '1.21'
 authors: [voidles02]
 
@@ -143,7 +143,6 @@ permissions:
       adm.bypass.hierarchy: true
       adm.bypass.mutechat: true
       adm.bypass.slowmode: true
-      adm.bypass.freeze: true
   adm.mod.gamemode:
     default: op
   adm.mod.gamemode.others:
@@ -253,7 +252,10 @@ permissions:
     default: op
   adm.bypass.freeze:
     description: Exempt from freeze enforcement
-    default: op
+    default: false
+  adm.bypass.combatlog:
+    description: Exempt from combat log logout penalties
+    default: false
   adm.tier.mod:
     default: op
   adm.tier.admin:

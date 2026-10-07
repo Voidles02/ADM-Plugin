@@ -43,13 +43,15 @@ import java.time.Instant
 import java.util.HexFormat
 import java.security.MessageDigest
 import java.util.UUID
+import java.util.concurrent.Executor
 
 class InventoryToolsService(
     plugin: JavaPlugin,
     modules: ModuleManager,
     permissions: PermissionService,
     private val messages: MessageService,
-    private val providers: EnderChestProviderRegistry
+    private val providers: EnderChestProviderRegistry,
+    private val ioExecutor: Executor
 ) : ServiceSupport(plugin, modules, permissions), Listener {
     override val id = "inventory"
     override val commands = listOf(CommandSpec("endersee"), CommandSpec("enderedit"), CommandSpec("invsee"))
@@ -103,7 +105,7 @@ class InventoryToolsService(
     override fun disable() {
         try {
             closeAll()
-            plugin.server.onlinePlayers.toList().forEach(offlineInventories::capture)
+            plugin.server.onlinePlayers.toList().forEach { offlineInventories.captureAsync(it, ioExecutor) }
         } finally {
             refreshTask?.cancel()
             providers.unregisterAll(plugin)
@@ -451,10 +453,11 @@ class InventoryToolsService(
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
-    fun captureOnQuit(event: PlayerQuitEvent) { offlineInventories.capture(event.player) }
+    fun captureOnQuit(event: PlayerQuitEvent) { offlineInventories.captureAsync(event.player, ioExecutor) }
 
     @EventHandler(priority = EventPriority.MONITOR)
     fun onJoin(event: PlayerJoinEvent) {
+        offlineInventories.cancelCapture(event.player.uniqueId)
         closeTarget(event.player.uniqueId)
         plugin.server.scheduler.runTask(plugin, Runnable {
             if (!event.player.isOnline) return@Runnable

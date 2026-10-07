@@ -5,6 +5,7 @@ import org.bukkit.event.Listener
 import org.bukkit.event.server.PluginEnableEvent
 import org.bukkit.plugin.Plugin
 import org.bukkit.plugin.java.JavaPlugin
+import org.bukkit.configuration.file.YamlConfiguration
 import java.util.Locale
 import java.util.logging.Level
 
@@ -36,11 +37,14 @@ class QuizyCombatLogCompatibility(
                 .flatMap { sequenceOf(it, "adm:$it") }
                 .distinct()
                 .toList()
-            val configured = commands.mapTo(hashSetOf()) { it.lowercase(Locale.ROOT) }
+            val configured = commands.mapTo(hashSetOf()) {
+                it.trim().removePrefix("/").lowercase(Locale.ROOT)
+            }
             val missing = admCommands.filter(configured::add)
             if (missing.isEmpty()) return
 
             config.set("unblocked-commands", commands + missing)
+            (config as? YamlConfiguration)?.options()?.indent(2)
             quizy.saveConfig()
             plugin.logger.info("Added ${missing.size} ADM command labels to QuizyCombatLog's unblocked-commands; reload QuizyCombatLog to apply them.")
         } catch (failure: Exception) {

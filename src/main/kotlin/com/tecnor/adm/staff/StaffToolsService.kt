@@ -215,15 +215,18 @@ class StaffToolsService(plugin: JavaPlugin, modules: ModuleManager, permissions:
         val id = target.uniqueId
         if (!freezePending.add(id)) return ActionResult.failure("staff.busy")
         val enabled = id !in frozen
+        if (enabled) frozen.add(id) else frozen.remove(id)
+        updateTask()
         val staff = actor.playerId()?.toString() ?: "CONSOLE"
         storage.submit { db -> if (enabled) db.update("MERGE INTO frozen(uuid,staff,created) KEY(uuid) VALUES(?,?,?)", id.toString(), staff, System.currentTimeMillis())
             else db.update("DELETE FROM frozen WHERE uuid=?", id.toString()) }.whenComplete { _, error -> scheduler.main(Runnable {
             freezePending.remove(id)
             if (error != null) {
+                if (enabled) frozen.remove(id) else frozen.add(id)
+                updateTask()
                 messages.send(actor, ActionResult.failure("storage.unavailable"))
                 return@Runnable
             }
-            if (enabled) frozen.add(id) else frozen.remove(id)
             if (enabled && target.isOnline) announceFreeze(target)
             if (!enabled && target.isOnline) target.sendActionBar(Component.empty())
             updateTask()
@@ -317,11 +320,14 @@ class StaffToolsService(plugin: JavaPlugin, modules: ModuleManager, permissions:
     fun move(event: PlayerMoveEvent) {
         if (!isFrozen(event.player) && !restricted(event.player)) return
         val to = event.to ?: return
-		if (event.from.world != to.world || event.from.x != to.x || event.from.y != to.y || event.from.z != to.z)
-            event.to = event.from.clone().also {
-                it.yaw = to.yaw
-                it.pitch = to.pitch
-            }
+        if (event.from.world != to.world || event.from.x != to.x || event.from.y != to.y || event.from.z != to.z) {
+            event.isCancelled = true
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    fun velocity(event: PlayerVelocityEvent) {
+        if (isFrozen(event.player) || restricted(event.player)) event.isCancelled = true
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -402,7 +408,9 @@ class StaffToolsService(plugin: JavaPlugin, modules: ModuleManager, permissions:
     @EventHandler(priority = EventPriority.HIGHEST) fun damage(event: EntityDamageEvent) {
         val victim = event.entity as? Player
         val attacker = (event as? org.bukkit.event.entity.EntityDamageByEntityEvent)?.damager as? Player
-        if (victim != null && staff(victim) || attacker != null && (staff(attacker) || isFrozen(attacker))) event.isCancelled = true
+        if (victim != null && (staff(victim) || isFrozen(victim)) || attacker != null && (staff(attacker) || isFrozen(attacker))) {
+            event.isCancelled = true
+        }
     }
 
     private fun audit(actor: CommandActor, target: Player, action: String) {

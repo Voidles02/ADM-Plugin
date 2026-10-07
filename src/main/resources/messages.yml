@@ -70,6 +70,10 @@ tpa:
   setting-updated: '<prefix><green>TPA <setting> set to <seconds> seconds.</green>'
   setting-save-failed: '<prefix><red>Could not save the TPA setting. Check the server log.</red>'
 
+combat-log:
+  tagged: '<prefix><red>You are in combat. Logging out within <seconds> seconds will kill you. Commands remain available.</red>'
+  quit: '<prefix><red><target> disconnected during combat and died.</red>'
+
 information:
   list: '<prefix><gray>Online (<count>): <players></gray>'
   ping: "<prefix><gray><target>'s ping: <ping>ms.</gray>"

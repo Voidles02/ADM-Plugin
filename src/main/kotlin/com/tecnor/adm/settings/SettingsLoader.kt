@@ -13,7 +13,7 @@ import java.nio.file.Path
  * Used synchronously only during startup, and on the ADM executor during reload.
  */
 object SettingsLoader {
-    private val moduleIds = listOf("core", "player-tools", "teleport", "tpa", "information", "chat", "anticheat", "inventory", "vanish", "world-control",
+    private val moduleIds = listOf("core", "player-tools", "teleport", "tpa", "information", "chat", "combat-log", "anticheat", "inventory", "vanish", "world-control",
         "punishments", "staff-chat", "staff-tools", "reports", "audit")
     private val featureCommandNames = setOf(
         "adm-connect", "anticheat", "announcement", "announce", "annoucement", "broadcast", "clearchat", "mutechat", "slowmode", "sudo",
@@ -117,10 +117,12 @@ object SettingsLoader {
         boundedInteger(config, "audit.max-file-bytes", 10485760, 1024, Int.MAX_VALUE)
         boundedInteger(config, "punishments.page-size", 10, 1, 50)
         boundedInteger(config, "freeze.actionbar-seconds", 5, 5, 86400)
+        boundedInteger(config, "combat-log.duration-seconds", 35, 1, 86400)
         boundedInteger(config, "audit.retention-days", 90, 1, 36500)
         boundedInteger(config, "reports.retention-days", 90, 1, 36500)
         boundedInteger(config, "reports.cooldown-seconds", 60, 0, 86400)
-        for (key in listOf("audit.enabled", "audit.file-secondary", "audit.prune-on-start", "audit.rotate-daily", "vanish.on-join", "vanish.fake-join", "vanish.fake-quit")) {
+        for (key in listOf("audit.enabled", "audit.file-secondary", "audit.prune-on-start", "audit.rotate-daily", "vanish.on-join", "vanish.fake-join", "vanish.fake-quit",
+                "combat-log.enabled", "combat-log.quit-penalty")) {
             require(!config.contains(key) || config.get(key) is Boolean) { "$key must be true or false" }
         }
         for (key in listOf("freeze.command-whitelist", "spy.ignored-commands", "spy.social-commands")) {
@@ -172,6 +174,7 @@ object SettingsLoader {
         mapOf("modules" to mapOf("core" to true),
             "commands" to mapOf("name" to "adm", "aliases" to listOf("advancedadminmanagement")),
             "tpa" to mapOf("cooldown-seconds" to 5, "protection-seconds" to 15),
+            "combat-log" to mapOf("enabled" to true, "duration-seconds" to 35, "quit-penalty" to true),
             "login-fallback" to "allow"),
         emptyMap()
     )

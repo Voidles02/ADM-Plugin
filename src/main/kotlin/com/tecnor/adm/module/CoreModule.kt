@@ -15,6 +15,7 @@ import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.HandlerList
 import org.bukkit.event.Listener
+import org.bukkit.event.player.PlayerCommandSendEvent
 import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.plugin.java.JavaPlugin
 
@@ -32,6 +33,21 @@ class CoreModule(
     private var state = ModuleStatus.DISABLED
     private var handlerRegistered = false
     private var commandsRegistered = false
+    private val commandLabels by lazy {
+        buildSet {
+            add(commands.name())
+            addAll(commands.aliases())
+            add("ADM-Console")
+            modules.features().forEach { feature ->
+                feature.service.commands.forEach { command ->
+                    add(command.name)
+                    addAll(command.aliases)
+                }
+            }
+        }.flatMapTo(HashSet()) { label ->
+            listOf(label.lowercase(), "adm:${label.lowercase()}")
+        }
+    }
 
     override fun id() = "core"
     override fun status() = state
@@ -89,6 +105,14 @@ class CoreModule(
 
     @EventHandler
     fun onQuit(event: PlayerQuitEvent) { service.forget(event.player.uniqueId) }
+
+    @EventHandler
+    fun onCommandSend(event: PlayerCommandSendEvent) {
+        val player = event.player
+        if (player.hasPermission("adm.tier.mod") || player.hasPermission("adm.tier.admin") ||
+            player.hasPermission("adm.tier.owner")) return
+        event.commands.removeIf { it.lowercase() in commandLabels }
+    }
 
     override fun onReload(snapshot: SettingsSnapshot) {
         // Commands and module enablement remain bound to the startup snapshot.

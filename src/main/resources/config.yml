@@ -5,6 +5,7 @@ modules:
   tpa: true
   information: true
   chat: true
+  combat-log: true
   anticheat: true
   inventory: true
   vanish: true
@@ -25,6 +26,11 @@ login-fallback: allow
 tpa:
   cooldown-seconds: 5
   protection-seconds: 15
+
+combat-log:
+  enabled: true
+  duration-seconds: 35
+  quit-penalty: true
 
 cooldowns:
   reload: 0

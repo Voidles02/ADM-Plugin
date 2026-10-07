@@ -26,6 +26,7 @@ import com.tecnor.adm.punishment.PunishmentEnforcement
 import com.tecnor.adm.punishment.PunishmentService
 import com.tecnor.adm.punishment.Punishments
 import com.tecnor.adm.service.ChatService
+import com.tecnor.adm.service.CombatLogService
 import com.tecnor.adm.service.AnticheatService
 import com.tecnor.adm.service.InformationService
 import com.tecnor.adm.service.InventoryToolsService
@@ -73,11 +74,25 @@ class ADMPlugin : JavaPlugin() {
         val initial = try {
             saveDefaultConfig()
             val configuration = getConfig()
+            var configChanged = false
             if (!configuration.contains("vanish.on-join-migration-complete", true)) {
                 configuration.set("vanish.on-join", false)
                 configuration.set("vanish.on-join-migration-complete", true)
-                saveConfig()
+                configChanged = true
             }
+            if (!configuration.contains("combat-log.enabled", true)) {
+                configuration.set("combat-log.enabled", true)
+                configChanged = true
+            }
+            if (!configuration.contains("combat-log.duration-seconds", true)) {
+                configuration.set("combat-log.duration-seconds", 35)
+                configChanged = true
+            }
+            if (!configuration.contains("combat-log.quit-penalty", true)) {
+                configuration.set("combat-log.quit-penalty", true)
+                configChanged = true
+            }
+            if (configChanged) saveConfig()
             if (!directory.resolve("messages.yml").toFile().exists()) saveResource("messages.yml", false)
             if (!directory.resolve("hud.yml").toFile().exists()) saveResource("hud.yml", false)
             SettingsLoader.load(directory)
@@ -149,9 +164,11 @@ class ADMPlugin : JavaPlugin() {
             AnticheatService(this, moduleManager, permissions, grimCompatibility)))
         moduleManager.register(FeatureModule(this, moduleManager, messages, ChatService(this, moduleManager, permissions, settings, messages, hierarchy)))
         moduleManager.register(FeatureModule(this, moduleManager, messages,
+            CombatLogService(this, moduleManager, permissions, settings, messages)))
+        moduleManager.register(FeatureModule(this, moduleManager, messages,
             WorldControlService(this, moduleManager, permissions, messages)))
         enderChestProviders = EnderChestProviderRegistry()
-        val inventories = InventoryToolsService(this, moduleManager, permissions, messages, enderChestProviders)
+        val inventories = InventoryToolsService(this, moduleManager, permissions, messages, enderChestProviders, executor)
         moduleManager.register(FeatureModule(this, moduleManager, messages, inventories))
         val vanish = VanishService(this, moduleManager, permissions, settings, messages)
         moduleManager.register(FeatureModule(this, moduleManager, messages, vanish))
