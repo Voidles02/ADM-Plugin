@@ -71,7 +71,7 @@ tpa:
   setting-save-failed: '<prefix><red>Could not save the TPA setting. Check the server log.</red>'
 
 combat-log:
-  tagged: '<prefix><red>You are in combat. Logging out within <seconds> seconds will kill you. Commands remain available.</red>'
+  timer: '<red>Combat logout penalty: <seconds>s remaining. Logging out means death.</red>'
   quit: '<prefix><red><target> disconnected during combat and died.</red>'
 
 information:
